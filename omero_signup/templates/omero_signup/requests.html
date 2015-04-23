@@ -1,0 +1,35 @@
+{% extends "omero_signup/base.html" %}
+
+{% block link %}
+    {{ block.super }}
+    <link rel="stylesheet" type="text/css"
+         href="{% static "webgateway/css/ome.body.css" %}"/>
+{% endblock %}
+
+{{ block.super }}
+
+<div class="one_column_content">
+
+	{% block title %}
+	    Account requests
+	{% endblock %}
+
+	{% block center_details %}
+		<h1>Account requests</h1>
+		{% if requests %}
+		    <ul>
+		    {% for request in requests %}
+		        <li><a href="{% url 'omero_signup_manage_requests' "inspect" request.id %}">{{ request.omename }} |
+		        <a href="{% url 'omero_signup_delete_request' request.id %}">Delete</a></li>
+		    {% endfor %}
+		    </ul>
+		{% else %}
+		    <p>No requests are available.</p>
+		    <a href="/omero_signup/new">Make a new request:</a>
+		{% endif %}
+	{% endblock %}
+
+	{% block metadata_details %}
+	    <br/>
+	{% endblock %}
+</div>
