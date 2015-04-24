@@ -202,7 +202,6 @@
 {{ block.super }}
 
 <div class="one_column_content">
-    <h1>{% trans "New User" %} </h1>
 
     {% if experimenter_exists %}
         <h1>{% trans "AN ACCOUNT ALREADY EXISTS FOR THIS USER" %} </h1>
@@ -212,10 +211,11 @@
         <a class="btn btn_text silver" id="delete_request">
             <span>Delete Request</span>
         </a>    
+        <a href="{% url 'omero_signup_requests' %}" title="All requests" class="btn btn_text silver" id="requests">
+            <span>Request list</span>
+        </a>  
         <!-- We are validating the account -->
         <form action="{% url 'omero_signup_manage_requests' "validate" account_id %}" method="POST" class="standard_form settings_form">{% csrf_token %}
-
-        <p>{% trans "Fields marked in red are mandatory." %}</p>
 
             <p><label>Password</label>
                 <a class="btn btn_text silver" id="change_password">
@@ -227,22 +227,15 @@
                 {% if field.errors %}<div style="clear:both">{{ field.errors }}</div>{% endif %}
 
                 {% ifequal field.label_tag form.default_group.label_tag %}
-                    <!-- default group -->
-                    <span class="required">{{ field.label_tag }}</span>
+					{{ field.label_tag }}
                     {{ field }}
                     <br />
                 {% else %}
                     {% ifequal field.label_tag form.other_groups.label_tag %}
-                        <!-- other groups -->
-                        <span class="required">{{ field.label_tag }}</span>
+						{{ field.label_tag }}
                         {{ field }}
                     {% else %}
-                        <!-- all other fields -->
-                        {% if field.field.required %}
-                            <span class="required">{{ field.label_tag }}</span>
-                        {% else %}
-                            {{ field.label_tag }}
-                        {% endif %}
+                        {{ field.label_tag }}
                         {{ field }}
                     {% endifequal %}
                 {% endifequal %}
@@ -295,7 +288,6 @@
         </form>
     {% endif %}
 
-    <h1>{{ account_id }}</h1>
     {% if account_id %}
     <!-- hidden dialog for password change - This is almost duplicated in myaccount.html-->
     <div id="password_change_dialog" title="Change Password">
@@ -324,17 +316,15 @@
         </table>
     </form>
     </div>
-    {% endif %}
+
     <div id="delete_request_dialog" title="Delete Request">
-        <h1>Delete request</h1>
+        <form id="delete_request_form" action="{% url 'omero_signup_delete_request' account_id %}" method="POST">{% csrf_token %}
+	        <h2>Really delete request {{ request.id }} ?</h2>
 
-        <h2>Really delete {{ request }} ?</h2>
-
-        <p>It will be permanently lost</p>
-
-        <form id="delete_request_form" method="POST">{% csrf_token %}
+	        <p>It will be permanently lost</p>
         </form>
     </div>
+    {% endif %}
 </div>
 {% endblock %}
 

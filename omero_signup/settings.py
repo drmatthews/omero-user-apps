@@ -1,7 +1,8 @@
 import json
 CUSTOM_SETTINGS_MAPPINGS = {
     "omero.web.omero_signup.databases": ["DATABASES",\
-    '{"omero_signup_db": {\
+    '{  "default" : {},\
+        "omero_signup": {\
         "ENGINE": "django.db.backends.postgresql_psycopg2",\
         "NAME": "omero_signup_db",\
         "USER": "omero_signup_db_user",\

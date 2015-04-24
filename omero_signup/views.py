@@ -150,10 +150,11 @@ def create_request(request, action, conn=None, **kwargs):
     return render(request,template,context)
 
 @login_required(isAdmin=True)
+@render_response()
 def manage_requests(request, action, account_id, conn=None, **kwargs):
     request.session.modified = True
-    template = 'omero_signup/experimenter_form.html'
     context = {}
+    context['template'] = 'omero_signup/experimenter_form.html'
     error = None
     groups = list(conn.getObjects("ExperimenterGroup"))
 
@@ -249,9 +250,10 @@ def manage_requests(request, action, account_id, conn=None, **kwargs):
                 omename, firstName, lastName, email, admin, active,
                 dGroup, listOfOtherGroups, password, middleName,
                 institution)
-            return HttpResponseRedirect("/webadmin/experimenters")
-        context['form'] = form
-    return render(request,template,context)
+            account.delete()
+            context['template'] = "/webadmin/experimenters"
+            return context
+    return context
 
 @login_required(isAdmin=True)
 def manage_password(request, account_id, conn=None, **kwargs):

@@ -23,19 +23,22 @@ def get_hexdigest(algorithm, salt, raw_password):
 
 class Account(models.Model):
 
-	omename = models.CharField(max_length=30)
-	first_name = models.CharField(max_length=100)
-	middle_name = models.CharField(max_length=100)
-	last_name = models.CharField(max_length=100)
-	email = models.EmailField(max_length=75)
-	password = models.CharField(max_length=200)
-	institution = models.CharField(max_length=100)
-	default_group = models.CharField(max_length=100)
-	other_groups = models.CharField(max_length=100)
+    omename = models.CharField(max_length=30)
+    first_name = models.CharField(max_length=100)
+    middle_name = models.CharField(max_length=100)
+    last_name = models.CharField(max_length=100)
+    email = models.EmailField(max_length=75)
+    password = models.CharField(max_length=200)
+    institution = models.CharField(max_length=100)
+    default_group = models.CharField(max_length=100)
+    other_groups = models.CharField(max_length=100)
 
-	def set_password(self, raw_password):
-	    import random
-	    algo = 'sha1'
-	    salt = get_hexdigest(algo, str(random.random()), str(random.random()))[:5]
-	    hsh = get_hexdigest(algo, salt, raw_password)
-	    self.password = '%s$%s$%s' % (algo, salt, hsh)
+    def set_password(self, raw_password):
+        import random
+        algo = 'sha1'
+        salt = get_hexdigest(algo, str(random.random()), str(random.random()))[:5]
+        hsh = get_hexdigest(algo, salt, raw_password)
+        self.password = '%s$%s$%s' % (algo, salt, hsh)
+        
+    def get_fullname(self):
+        return self.first_name + ' ' + self.middle_name + ' ' + self.last_name
