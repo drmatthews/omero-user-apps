@@ -1,0 +1,15 @@
+{% extends "webgateway/base/base_main.html" %}
+{% load i18n %}
+
+{% block link %}
+    {{ block.super }}
+    <link rel="stylesheet" href="{% static "webadmin/css/dusty.css"|add:url_suffix %}" type="text/css" media="screen"/>
+{% endblock %}    
+
+{% block content %}
+    <div id="center_details">
+        {% if ome.message %}<div class="error">{{ ome.message|safe|linebreaks }}</div>{% endif %}
+        {% block center_details %}{% endblock %}
+    </div>
+{% endblock %}
+

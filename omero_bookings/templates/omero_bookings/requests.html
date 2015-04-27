@@ -1,0 +1,56 @@
+{% extends "omero_signup/base.html" %}
+{% load i18n %}
+
+{% block link %}
+    {{ block.super }}
+    <link rel="stylesheet" type="text/css" href="{% static "webgateway/css/ome.body.css" %}"/>
+    <link rel="stylesheet" href="{% static "webgateway/css/ome.table.css"|add:url_suffix %}" type="text/css" media="screen"/>
+    <link rel="stylesheet" href="{% static "3rdparty/jquery.tablesorter-2.0.3/jquery.tablesorter.css" %}" type="text/css" media="screen"/>
+{% endblock %}
+
+{% block title %}
+    Account requests
+{% endblock %}
+
+{% block center_details %}
+{{ block.super }}
+
+<div class="one_column_content">
+	<h1>Account requests</h1>
+	{% if requests %}
+	<table id="requestsTable" class="tablesorter tablesorter_basic">
+	    <thead>
+	        <tr>
+	            <th>{% trans "ID" %}</th>
+	            <th>{% trans "Full name" %}</th>
+	            <th>{% trans "Username" %}</th>
+	            <th>{% trans "Institution" %}</th>
+	            <th></th>
+	        </tr>
+	    </thead>
+	    <tbody>
+	    {% for request in requests %}
+	        <tr>
+	            <td>{{ request.id }}</td>
+	            <td>{{ request.get_fullname }}</td>
+	            <td>{{ request.omename }}</td>
+	            <td>{{ request.institution|default:"-"|truncatewords:"3" }}</td>
+	            <td>
+	                <a href="{% url 'omero_signup_manage_requests' "inspect" request.id %}" title="Validate" class="btn btn_text silver">
+	                    <span>View</span>
+	                </a>
+	            </td>
+	        </tr>
+	    {% endfor %}
+	  </tbody>
+	</table>
+	{% else %}
+	    <p>No requests are available.</p>
+	    <a href="/omero_signup/new">Make a new request:</a>
+	{% endif %}
+
+	{% block metadata_details %}
+	    <br/>
+	{% endblock %}
+</div>
+{% endblock %}
