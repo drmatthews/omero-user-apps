@@ -37,6 +37,7 @@ INSTALLED_APPS = (
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'omero_signup',
+    'omero_bookings',
 )
 
 MIDDLEWARE_CLASSES = (
@@ -59,8 +60,8 @@ WSGI_APPLICATION = 'omero_user_apps.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql_psycopg2',
-        'NAME': 'omero_signup_db',
-        'USER': 'omero_signup_db_user',
+        'NAME': 'omero_bookings_db',
+        'USER': 'omero_bookings_db_user',
         'PASSWORD': 'pkcalpha',
         'HOST': 'localhost'
     }

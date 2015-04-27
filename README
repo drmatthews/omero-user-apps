@@ -1,0 +1,9 @@
+# on mac os do the following to create a postgresql user and database
+
+$ createuser -P -D -R -S db_user
+Enter password for new role:       # enter db_password
+Enter it again:                    # enter db_password
+$ createdb -E UTF8 -O db_user database
+
+# check that everything has been created
+$ psql -h localhost -U db_user -l
