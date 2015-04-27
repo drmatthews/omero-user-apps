@@ -83,10 +83,13 @@ def checkExperimenter(conn, new_omename):
 ##############################################################################
 # views control
 @login_required(isAdmin=True)
+@render_response()
 def all_requests(request, conn=None, **kwargs):
-    template = 'omero_signup/requests.html'
     account_requests = models.Account.objects.all()
-    return render(request,template,{'requests':account_requests})
+    context = {}
+    context['requests'] = account_requests
+    context['template'] = 'omero_signup/requests.html'
+    return context
 
 @login_required()
 def create_request(request, action, conn=None, **kwargs):

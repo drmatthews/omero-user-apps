@@ -1,0 +1,18 @@
+{% load i18n %}
+<ul>
+    <!-- Handle links from settings -->
+    {% for link in ome.top_links %}
+        <li class="menu_link">
+          <a href="{{ link.link }}"
+            {% if link.attrs %}
+              {% for k, v in link.attrs.items %} {{ k }}="{{v}}"{% endfor %}
+            {% endif %}
+          >{{ link.label }}</a>
+        </li>
+    {% endfor %}
+
+    {% if ome.eventContext.isAdmin %}
+        <li class="admin"><a href="{% url 'waindex' %}" title="Web-Admin: Edit users and groups">{% trans "Admin" %}</a></li>
+        <li class="admin"><a href="{% url 'omero_signup_requests' %}" title="Manage account requests">{% trans "Requests" %}</a></li>
+    {% endif %}
+</ul>
