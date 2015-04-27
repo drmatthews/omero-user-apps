@@ -21,7 +21,7 @@ def get_hexdigest(algorithm, salt, raw_password):
         return hashlib.sha1(salt + raw_password).hexdigest()
     raise ValueError("Got unknown password algorithm type in password.")
 
-class Account(models.Model):
+class AccountRequest(models.Model):
 
     omename = models.CharField(max_length=30)
     first_name = models.CharField(max_length=100)
@@ -42,3 +42,19 @@ class Account(models.Model):
         
     def get_fullname(self):
         return self.first_name + ' ' + self.middle_name + ' ' + self.last_name
+        
+class Microscope(models.Model):
+    name = models.CharField(max_length=200)
+    
+class Sample(models.Model):
+    description = models.CharField(max_length=200)
+    
+class MicroscopeBooking(models.Model):
+    microscopes = models.ManyToManyField(Microscope)
+    user_id = models.IntegerField()
+    booking_date = models.DateTimeField('booking date')
+    
+class TrainingRequest(models.Model):
+    instruments = models.ManyToManyField(Microscope)
+    samples = models.ManyToManyField(Sample)
+    markers = models.CharField(max_length=200)
