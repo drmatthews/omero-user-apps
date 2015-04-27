@@ -8,14 +8,14 @@
     <link rel="stylesheet" href="{% static "3rdparty/jquery.tablesorter-2.0.3/jquery.tablesorter.css" %}" type="text/css" media="screen"/>
 {% endblock %}
 
+{% block title %}
+    Account requests
+{% endblock %}
+
 {% block center_details %}
 {{ block.super }}
 
 <div class="one_column_content">
-	{% block title %}
-	    Account requests
-	{% endblock %}
-
 	<h1>Account requests</h1>
 	{% if requests %}
 	<table id="requestsTable" class="tablesorter tablesorter_basic">

@@ -1,14 +1,10 @@
-{% extends "webgateway/base/container2.html" %}
+{% extends "webgateway/base/base_main.html" %}
 {% load i18n %}
 
 {% block link %}
     {{ block.super }}
     <link rel="stylesheet" href="{% static "webadmin/css/dusty.css"|add:url_suffix %}" type="text/css" media="screen"/>
 {% endblock %}    
-
-{% block middle_header_left %}
-    {% include "omero_signup/menu.html" %}
-{% endblock %}
 
 {% block content %}
     <div id="center_details">
