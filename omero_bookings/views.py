@@ -37,11 +37,11 @@ from django.http import Http404, HttpResponse, HttpResponseRedirect
 from django.core.urlresolvers import reverse
 from django.shortcuts import render, get_object_or_404
 
-from forms import AccountRequestForm,ChangePassword
+from forms import AccountRequestForm,TrainingRequestForm,MicroscopeForm,ChangePassword
 from omeroweb.webclient.decorators import login_required
 from omeroweb.webclient.decorators import render_response
 
-from omero_signup import models
+from omero_bookings import models
 
 #import tree
 
@@ -85,16 +85,18 @@ def checkExperimenter(conn, new_omename):
 @login_required(isAdmin=True)
 @render_response()
 def all_requests(request, conn=None, **kwargs):
-    account_requests = models.Account.objects.all()
+    account_requests = models.AccountRequest.objects.all()
+    training_requests = models.TrainingRequest.objects.all()
     context = {}
-    context['requests'] = account_requests
-    context['template'] = 'omero_signup/requests.html'
+    context['account_requests'] = account_requests
+    context['training_requests'] = training_requests
+    context['template'] = 'omero_bookings/requests.html'
     return context
 
 @login_required()
-def create_request(request, action, conn=None, **kwargs):
+def create_account_request(request, action, conn=None, **kwargs):
     request.session.modified = True
-    template = 'omero_signup/experimenter_form.html'
+    template = 'omero_bookings/experimenter_form.html'
     error = None
     groups = list(conn.getObjects("ExperimenterGroup"))
 
@@ -141,7 +143,8 @@ def create_request(request, action, conn=None, **kwargs):
             new_account.other_groups = json.dumps(other_groups)
             new_account.save()
 
-            return HttpResponseRedirect("/omero_signup/requests")
+            return HttpResponseRedirect("/omero_bookings/requests")
+            
     form = AccountRequestForm(initial={
         'with_password': True, 'active': False,
         'my_groups': [],
@@ -152,17 +155,138 @@ def create_request(request, action, conn=None, **kwargs):
     context['groups'] = []
     return render(request,template,context)
 
+@login_required(allowPublic=False)
+@render_response()     
+def create_training_request(request, action, conn=None, **kwargs):
+    context = {}
+    context['template'] = "omero_bookings/training_form.html"       
+    if action == 'create':
+      form = TrainingRequestForm(request.POST)
+      if form.is_valid():
+        training = form.save(commit=False)
+        training.save()
+    else:
+      form = TrainingRequestForm()
+    context['form'] = form
+    return context
+            
 @login_required(isAdmin=True)
 @render_response()
-def manage_requests(request, action, account_id, conn=None, **kwargs):
+def manage_account_requests(request, action, account_id, conn=None, **kwargs):
     request.session.modified = True
     context = {}
-    context['template'] = 'omero_signup/experimenter_form.html'
+    context['template'] = 'omero_bookings/experimenter_form.html'
     error = None
     groups = list(conn.getObjects("ExperimenterGroup"))
 
     if action == "new":
         form = AccountRequestForm(initial={
+            'with_password': True, 'active': False,
+            'my_groups': [],
+            'groups': otherGroupsInitialList(groups)})
+
+        context['conn'] = conn
+        context['form'] = form
+        context['groups'] = []
+
+    elif action == "inspect":
+
+        groups = list(conn.getObjects("ExperimenterGroup"))
+        account = get_object_or_404(models.Account, pk=account_id)
+        experimenter_exists = checkExperimenter(conn, account.omename)  
+        my_groups = getSelectedGroups(conn,[int(g) for g in json.loads(account.other_groups)])
+        other_groups_ids = json.loads(account.other_groups)
+        print account.password
+        initial = {
+            'omename': account.omename,
+            'first_name': account.first_name,
+            'middle_name': account.middle_name,
+            'last_name': account.last_name,
+            'email': account.email,
+            'institution': account.institution,
+            #'administrator': account.isAdmin(),
+            'active': True,
+            'default_group': account.default_group,
+            'my_groups': my_groups,
+            'other_groups': [g for g in json.loads(account.other_groups)],
+            'groups': otherGroupsInitialList(groups)}
+        form = AccountRequestForm(initial=initial)
+        password_form = ChangePassword()
+        context['conn'] = conn
+        context['account_id'] = account_id
+        context['form'] = form
+        context['password_form'] = password_form
+        context['groups'] = groups
+        context['new_experimenter'] = experimenter_exists
+
+    elif action == "validate":
+        # now validate the account --> create a new omero account!
+        account = get_object_or_404(models.Account, pk=account_id)
+        name_check = conn.checkOmeName(request.REQUEST.get('omename'))
+        email_check = conn.checkEmail(request.REQUEST.get('email'))
+        my_groups = getSelectedGroups(
+            conn,
+            request.POST.getlist('other_groups'))
+        initial = {'my_groups': my_groups,
+                   'groups': otherGroupsInitialList(groups)}
+        form = AccountRequestForm(initial=initial, data=request.REQUEST.copy(),
+                                name_check=name_check,
+                                email_check=email_check)
+        print form.is_valid()
+        if form.is_valid():
+            logger.debug("Create experimenter form:" +
+                         str(form.cleaned_data))
+            omename = form.cleaned_data['omename']
+            firstName = form.cleaned_data['first_name']
+            middleName = form.cleaned_data['middle_name']
+            lastName = form.cleaned_data['last_name']
+            email = form.cleaned_data['email']
+            institution = form.cleaned_data['institution']
+            admin = form.cleaned_data['administrator']
+            active = form.cleaned_data['active']
+            defaultGroup = form.cleaned_data['default_group']
+            otherGroups = form.cleaned_data['other_groups']
+            password = account.password
+
+            # default group
+            # if default group was not selected take first from the list.
+            if defaultGroup is None:
+                defaultGroup = otherGroups[0]
+            for g in groups:
+                if long(defaultGroup) == g.id:
+                    dGroup = g
+                    break
+
+            listOfOtherGroups = set()
+            # rest of groups
+            for g in groups:
+                for og in otherGroups:
+                    # remove defaultGroup from otherGroups if contains
+                    if long(og) == long(dGroup.id):
+                        pass
+                    elif long(og) == g.id:
+                        listOfOtherGroups.add(g)
+
+            conn.createExperimenter(
+                omename, firstName, lastName, email, admin, active,
+                dGroup, listOfOtherGroups, password, middleName,
+                institution)
+            account.delete()
+            context['template'] = "/webadmin/experimenters"
+            return context
+    return context
+    
+@login_required(isAdmin=True)
+@render_response()
+def manage_training_requests(request, action, account_id, conn=None, **kwargs):
+    request.session.modified = True
+    context = {}
+    context['template'] = 'omero_bookings/training_form.html'
+    error = None
+    groups = list(conn.getObjects("ExperimenterGroup"))
+
+    if action == "new":
+        form = TrainingRequestForm(initial={
             'with_password': True, 'active': False,
             'my_groups': [],
             'groups': otherGroupsInitialList(groups)})
@@ -285,11 +409,76 @@ def delete_request(request, account_id, conn=None, **kwargs):
     account = get_object_or_404(models.Account, pk=account_id)
     if request.method == 'POST':
         account.delete()
-        return HttpResponseRedirect('/omero_signup/requests')
+        return HttpResponseRedirect('/omero_bookings/requests')
     else:
-        template = 'omero_signup/delete_request.html'
+        template = 'omero_bookings/delete_request.html'
     return render(request, template, {})
 
+@login_required(isAdmin=True)
+@render_response()
+def all_instruments(request, conn=None, **kwargs):    
+    context = {}
+    instruments = models.Microscope.objects.all()
+    context['template'] = "omero_bookings/instruments.html"
+    context['instruments'] = instruments
+    return context
+            
+@login_required(isAdmin=True)
+@render_response()
+def manage_instruments(request, action, instrument_id, conn=None, **kwargs):
+    print "action",action
+    context = {}
+    context['template'] = "omero_bookings/instruments_form.html"
+    # action new
+    if action == 'new':
+        form = MicroscopeForm()
+        context['form'] = form
+    # action create
+    if action == 'create':
+        form = MicroscopeForm(request.POST)
+        if form.is_valid():
+            name = form.cleaned_data['name']
+            instrument = models.Microscope(name=name)
+            instrument.save()
+            return HttpResponseRedirect(reverse("bookings_instruments"))
+    # action edit
+    if action == 'edit':
+        instrument = get_object_or_404(models.Microscope, pk=instrument_id)
+        form = MicroscopeForm(request.POST or None,instance=instrument)
+        context['form'] = form
+        context['instrument_id'] = instrument.id
+    # action save
+    if action == 'save':
+        instrument = get_object_or_404(models.Microscope, pk=instrument_id)
+        if request.method != 'POST':
+            return HttpResponseRedirect(
+                reverse(viewname="bookings_manage_instruments",
+                        args=["edit", instrument.id]))
+        else:
+            form = MicroscopeForm(request.POST,instance=instrument)
+            if form.is_valid():
+                form.save()
+                return HttpResponseRedirect(reverse("bookings_instruments"))
+    # action delete
+    if action == 'delete':
+        instrument = get_object_or_404(models.Microscope, pk=instrument_id)
+        if request.method == 'POST':
+            instrument.delete()
+            return HttpResponseRedirect(reverse("bookings_instruments"))        
+    return context
+    
+@login_required(isAdmin=True)
+@render_response()
+def delete_instrument(request, instrument_id, conn=None, **kwargs):
+    instrument = get_object_or_404(models.Microscope, pk=instrument_id)
+    if request.method == 'POST':
+        instrument.delete()
+        return HttpResponseRedirect(reverse("bookings_instruments"))
+    else:
+        context = {}
+        context['template'] = 'omero_bookings/delete_instrument.html'
+    return context
+    
 def display_meta(request):
     values = request.META.items()
     values.sort()

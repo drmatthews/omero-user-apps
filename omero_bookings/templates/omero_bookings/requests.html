@@ -1,4 +1,4 @@
-{% extends "omero_signup/base.html" %}
+{% extends "omero_bookings/base.html" %}
 {% load i18n %}
 
 {% block link %}
@@ -36,7 +36,7 @@
 	            <td>{{ request.omename }}</td>
 	            <td>{{ request.institution|default:"-"|truncatewords:"3" }}</td>
 	            <td>
-	                <a href="{% url 'omero_signup_manage_requests' "inspect" request.id %}" title="Validate" class="btn btn_text silver">
+	                <a href="{% url 'bookings_manage_account_requests' "inspect" request.id %}" title="Validate" class="btn btn_text silver">
 	                    <span>View</span>
 	                </a>
 	            </td>
@@ -46,7 +46,7 @@
 	</table>
 	{% else %}
 	    <p>No requests are available.</p>
-	    <a href="/omero_signup/new">Make a new request:</a>
+	    <a href="/omero_bookings/newaccount">Make a new account:</a>
 	{% endif %}
 
 	{% block metadata_details %}

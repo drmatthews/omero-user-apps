@@ -1,4 +1,4 @@
-{% extends "omero_signup/base.html" %}
+{% extends "omero_bookings/base.html" %}
 {% load i18n %}
 <!-- {% load common_filters %} -->
 
@@ -211,11 +211,11 @@
         <a class="btn btn_text silver" id="delete_request">
             <span>Delete Request</span>
         </a>    
-        <a href="{% url 'omero_signup_requests' %}" title="All requests" class="btn btn_text silver" id="requests">
+        <a href="{% url 'bookings_requests' %}" title="All requests" class="btn btn_text silver" id="requests">
             <span>Request list</span>
         </a>  
         <!-- We are validating the account -->
-        <form action="{% url 'omero_signup_manage_requests' "validate" account_id %}" method="POST" class="standard_form settings_form">{% csrf_token %}
+        <form action="{% url 'bookings_manage_account_requests' "validate" account_id %}" method="POST" class="standard_form settings_form">{% csrf_token %}
 
             <p><label>Password</label>
                 <a class="btn btn_text silver" id="change_password">
@@ -249,7 +249,7 @@
         </form>
     {% else %}
         <!-- We are creating new user -->
-        <form action="{% url 'omero_signup_create_request' "create" %}" method="POST" class="standard_form settings_form">{% csrf_token %}
+        <form action="{% url 'bookings_create_account_request' "create" %}" method="POST" class="standard_form settings_form">{% csrf_token %}
         {{ form.errors }}
         {{ form.non_field_errors }}
         <p>{% trans "Fields marked in red are mandatory." %}</p>
@@ -292,7 +292,7 @@
     <!-- hidden dialog for password change - This is almost duplicated in myaccount.html-->
     <div id="password_change_dialog" title="Change Password">
 
-    <form id="change_password_form" action="{% url 'omero_signup_changepassword' account_id %}" method="POST">{% csrf_token %}
+    <form id="change_password_form" action="{% url 'bookings_changepassword' account_id %}" method="POST">{% csrf_token %}
 
         <table>
             <tbody>

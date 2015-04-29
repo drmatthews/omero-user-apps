@@ -25,15 +25,16 @@ import logging
 
 from django.conf import settings
 from django import forms
+from django.forms import ModelForm, Select
 from django.forms.widgets import Textarea
 
 from omeroweb.connector import Server
-
 from omeroweb.custom_forms import NonASCIIForm
 
 from omeroweb.webadmin.custom_forms import ServerModelChoiceField, GroupModelChoiceField
 from omeroweb.webadmin.custom_forms import GroupModelMultipleChoiceField, OmeNameField
 from omeroweb.webadmin.custom_forms import ExperimenterModelMultipleChoiceField, MultiEmailField
+from omero_bookings.models import TrainingRequest, Microscope
 
 logger = logging.getLogger(__name__)
 
@@ -158,7 +159,18 @@ class AccountRequestForm(NonASCIIForm):
                 'User must be a member of at least one group.')
         else:
             return self.cleaned_data.get('other_groups')
+            
+class TrainingRequestForm(forms.ModelForm):
+    class Meta:
+        model = TrainingRequest
+        widgets = {
+            'instrument': Select(),
+        }
 
+class MicroscopeForm(forms.ModelForm):
+    class Meta:
+        model = Microscope
+        
 class ChangePassword(NonASCIIForm):
 
     old_password = forms.CharField(
