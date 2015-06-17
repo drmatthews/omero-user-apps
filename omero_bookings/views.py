@@ -36,6 +36,7 @@ from django.template import loader as template_loader
 from django.http import Http404, HttpResponse, HttpResponseRedirect
 from django.core.urlresolvers import reverse
 from django.shortcuts import render, get_object_or_404
+from django.core.mail import send_mail
 
 from forms import AccountRequestForm,TrainingRequestForm,MicroscopeForm,ChangePassword
 from omeroweb.webclient.decorators import login_required
@@ -286,10 +287,9 @@ def manage_training_requests(request, action, account_id, conn=None, **kwargs):
     groups = list(conn.getObjects("ExperimenterGroup"))
 
     if action == "new":
-        form = TrainingRequestForm(initial={
-            'with_password': True, 'active': False,
-            'my_groups': [],
-            'groups': otherGroupsInitialList(groups)})
+        microscopes = models.Microscope.objects.all()
+        samples = models.Sample.objects.all()
+        form = TrainingRequestForm(instruments=microscopes,samples=samples)
 
         context['conn'] = conn
         context['form'] = form
@@ -425,7 +425,7 @@ def all_instruments(request, conn=None, **kwargs):
             
 @login_required(isAdmin=True)
 @render_response()
-def manage_instruments(request, action, instrument_id, conn=None, **kwargs):
+def manage_instruments(request, action, instrument_id=None, conn=None, **kwargs):
     print "action",action
     context = {}
     context['template'] = "omero_bookings/instruments_form.html"
@@ -440,6 +440,10 @@ def manage_instruments(request, action, instrument_id, conn=None, **kwargs):
             name = form.cleaned_data['name']
             instrument = models.Microscope(name=name)
             instrument.save()
+            
+            # just for testing of email sending
+            send_mail('New instrument', 'New instrument created.', 'omeroadmin@omerocloud.com',
+                ['d.matthews1@uq.edu.au'], fail_silently=False)
             return HttpResponseRedirect(reverse("bookings_instruments"))
     # action edit
     if action == 'edit':

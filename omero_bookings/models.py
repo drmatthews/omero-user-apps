@@ -45,7 +45,7 @@ class AccountRequest(models.Model):
         
 class Microscope(models.Model):
     name = models.CharField(max_length=200)
-    active = models.BooleanField()
+    active = models.BooleanField(default=True)
     location = models.CharField(default=101,max_length=200)
     rate = models.IntegerField(default=0)
 
@@ -53,8 +53,14 @@ class Microscope(models.Model):
     def is_active(self):
         return bool(self.active)    
         
+    def __unicode__(self):              # __str__ on Python 3
+        return self.name
+        
 class Sample(models.Model):
     description = models.CharField(max_length=200)
+    
+    def __unicode__(self):              # __str__ on Python 3
+        return self.description
     
 class MicroscopeBooking(models.Model):
     microscope = models.ManyToManyField(Microscope)
@@ -65,3 +71,4 @@ class TrainingRequest(models.Model):
     instrument = models.ManyToManyField(Microscope)
     sample = models.ManyToManyField(Sample)
     marker = models.CharField(max_length=200)
+    

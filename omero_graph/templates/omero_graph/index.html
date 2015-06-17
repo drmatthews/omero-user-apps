@@ -1,0 +1,34 @@
+{% extends "omero_bookings/base.html" %}
+{% load i18n %}
+
+{% block link %}
+    {{ block.super }}
+    <link rel="stylesheet" type="text/css" href="{% static "webgateway/css/ome.body.css" %}"/>
+    <link rel="stylesheet" href="{% static "webgateway/css/ome.table.css"|add:url_suffix %}" type="text/css" media="screen"/>
+    <link rel="stylesheet" href="{% static "3rdparty/jquery.tablesorter-2.0.3/jquery.tablesorter.css" %}" type="text/css" media="screen"/>
+{% endblock %}
+
+{% block title %}
+    Graphs
+{% endblock %}
+
+{% block center_details %}
+{{ block.super }}
+
+<div class="one_column_content">
+	<h1>Annotations for {{ userFullName }}</h1>
+	{% if annotations %}
+	    {% for annotation in annotations %}
+	        <a href="{% url 'show' annotation %}">
+            	<span>{{ annotation }}</span>
+            </a>
+	    {% endfor %}
+	{% else %}
+	    <p>No annotations.</p>
+	{% endif %}
+
+	{% block metadata_details %}
+	    <br/>
+	{% endblock %}
+</div>
+{% endblock %}

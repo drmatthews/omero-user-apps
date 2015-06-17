@@ -25,7 +25,7 @@ import logging
 
 from django.conf import settings
 from django import forms
-from django.forms import ModelForm, Select
+from django.forms import ModelForm, Select, CheckboxSelectMultiple
 from django.forms.widgets import Textarea
 
 from omeroweb.connector import Server
@@ -165,6 +165,7 @@ class TrainingRequestForm(forms.ModelForm):
         model = TrainingRequest
         widgets = {
             'instrument': Select(),
+            'sample': CheckboxSelectMultiple(),
         }
 
 class MicroscopeForm(forms.ModelForm):
