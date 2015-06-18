@@ -1,4 +1,4 @@
-{% extends "omero_bookings/base.html" %}
+
 {% load i18n %}
 
 {% block link %}
@@ -18,11 +18,12 @@
 <div class="one_column_content">
 	<h1>Annotations for {{ userFullName }}</h1>
 	{% if annotations %}
-	    {% for annotation in annotations %}
-	        <a href="{% url 'show' annotation %}">
-            	<span>{{ annotation }}</span>
-            </a>
-	    {% endfor %}
+	    <ul>{% for annotation in annotations %}
+			<li>
+				<a href="{% url 'show' annotation.id %}">{{ annotation.getFile.getName }}</a>
+			    <input type="checkbox" name="skip header" value="first line header?" />{{email}}<br />
+			</li>
+	    {% endfor %}</ul>
 	{% else %}
 	    <p>No annotations.</p>
 	{% endif %}

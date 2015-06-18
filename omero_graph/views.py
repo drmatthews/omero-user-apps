@@ -1,6 +1,7 @@
 from django.http import Http404, HttpResponse
 from django.shortcuts import render
 
+import os
 from collections import defaultdict
 import numpy as np
 import pandas as pd
@@ -8,7 +9,36 @@ import pandas as pd
 import omero
 from omeroweb.webclient.decorators import login_required
 
-def store_data(ann):
+PATH = '/Users/uqdmatt2/Desktop/temp'
+
+def parse_annotation(path,cols):
+    num_lines = sum(1 for line in open(path))
+    try:
+        with open(path) as t_in:
+            data = pd.read_csv(t_in,header=1,\
+                               sep=r'\t|,',engine='python',\
+                               skiprows=range(num_lines-50,num_lines),\
+                               index_col=False)  
+        return data[cols]       
+    except:
+        print 'there was a problem parsing the data'
+        return None
+        
+def parse_annotation(path):
+    num_lines = sum(1 for line in open(path))
+    try:
+        with open(path) as t_in:
+            data = pd.read_csv(t_in,header=1,\
+                               sep=r'\t|,',engine='python',\
+                               skiprows=range(num_lines-50,num_lines),\
+                               index_col=False)  
+        print list(data.columns.values) 
+        return list(data.columns.values)        
+    except:
+        print 'there was a problem parsing the data'
+        return None
+        
+def download_annotation(ann):
     """
     Downloads the specified file to and returns the path on the server
     
@@ -17,13 +47,18 @@ def store_data(ann):
     if not os.path.exists(PATH):
         os.makedirs(PATH)
     file_path = os.path.join(PATH, ann.getFile().getName())
-    store = pd.HDFStore(file_path,mode='w')
-    try:
-        for chunk in ann.getFileInChunks():
-            store.append('df',chunk)
-    finally:
-        store.close()
-    return file_path
+    if os.path.isfile(file_path):
+        return file_path
+    else:
+        f = open(str(file_path), 'w')
+        print "\nDownloading file to", file_path, "..."
+        try:
+            for chunk in ann.getFileInChunks():
+                f.write(chunk)
+        finally:
+            f.close()
+            print "File downloaded!"
+        return file_path
 
 def find_duplicate_annotations(mylist):
     D = defaultdict(list)
@@ -70,6 +105,23 @@ def index(request, conn=None, **kwargs):
     userFullName = conn.getUser().getFullName()
     anns,names = get_user_annotations(conn)
     context = {'userFullName': userFullName,
-               'annotations': anns
+               'annotations': anns,
                'annotation_names': names }
     return render(request, "omero_graph/index.html", context)
+    
+@login_required()
+def show(request, annotation_id, conn=None, **kwargs):
+    annotation = conn.getObject("Annotation",annotation_id)
+    fpath = download_annotation(annotation)
+    cols = parse_annotation(fpath)
+    context = {'annotation': annotation,
+               'columns': cols}
+    return render(request,"omero_graph/show.html", context)
+    
+@login_required()
+def graph(request, annotation_id, conn=None, **kwargs):
+    annotation = conn.getObject("Annotation",annotation_id)
+    cols = get_columns(fpath)
+    rv['data'] = 
+    return render(request,"omero_graph/show.html", context)
+    
