@@ -1,7 +1,10 @@
 from django.http import Http404, HttpResponse
 from django.shortcuts import render
+from django.utils import simplejson
+from forms import GraphForm
 
 import os
+from math import floor
 from collections import defaultdict
 import numpy as np
 import pandas as pd
@@ -11,7 +14,7 @@ from omeroweb.webclient.decorators import login_required
 
 PATH = '/Users/uqdmatt2/Desktop/temp'
 
-def parse_annotation(path,cols):
+def get_column(path,col):
     num_lines = sum(1 for line in open(path))
     try:
         with open(path) as t_in:
@@ -19,24 +22,26 @@ def parse_annotation(path,cols):
                                sep=r'\t|,',engine='python',\
                                skiprows=range(num_lines-50,num_lines),\
                                index_col=False)  
-        return data[cols]       
+        return list(data[col].values)       
     except:
         print 'there was a problem parsing the data'
         return None
         
 def parse_annotation(path):
     num_lines = sum(1 for line in open(path))
-    try:
-        with open(path) as t_in:
-            data = pd.read_csv(t_in,header=1,\
-                               sep=r'\t|,',engine='python',\
-                               skiprows=range(num_lines-50,num_lines),\
-                               index_col=False)  
-        print list(data.columns.values) 
-        return list(data.columns.values)        
-    except:
-        print 'there was a problem parsing the data'
-        return None
+    #try:
+    with open(path) as t_in:
+        data = pd.read_csv(t_in,header=1,\
+                           sep=r'\t|,',engine='python',\
+                           skiprows=range(num_lines-50,num_lines),\
+                           index_col=False)  
+    columns = []
+    for col in data.columns.values:
+        columns.append((col,col)) 
+    return columns        
+    #except:
+    #    print 'there was a problem parsing the data'
+    #    return None
         
 def download_annotation(ann):
     """
@@ -110,18 +115,30 @@ def index(request, conn=None, **kwargs):
     return render(request, "omero_graph/index.html", context)
     
 @login_required()
-def show(request, annotation_id, conn=None, **kwargs):
+def plot(request, annotation_id, conn=None, **kwargs):
     annotation = conn.getObject("Annotation",annotation_id)
     fpath = download_annotation(annotation)
     cols = parse_annotation(fpath)
-    context = {'annotation': annotation,
-               'columns': cols}
-    return render(request,"omero_graph/show.html", context)
+    if request.POST:
+        form = GraphForm(options=cols,data=request.POST)
+        print form.is_valid()
+        if form.is_valid():
+            title = annotation.getFile().getName()
+            x = form.cleaned_data['x']
+            y = form.cleaned_data['y']
+            xdata = [floor(xd) for xd in get_column(fpath,x)]
+            xmin = min(xdata)
+            xmax = max(xdata)
+            ydata = get_column(fpath,y)
+            plot_data = {'title': title, 'x' : x, 'y' : y,\
+                         'xdata': xdata, 'ydata': ydata,\
+                         'xmin': xmin, 'xmax': xmax}
+            data = simplejson.dumps(plot_data)
+            return HttpResponse(data, mimetype='application/json')
+    else:
+        form = GraphForm(options=cols)
     
-@login_required()
-def graph(request, annotation_id, conn=None, **kwargs):
-    annotation = conn.getObject("Annotation",annotation_id)
-    cols = get_columns(fpath)
-    rv['data'] = 
-    return render(request,"omero_graph/show.html", context)
+    context = {'annotation': annotation,
+               'columns': cols,'form': form}
+    return render(request,"omero_graph/plot.html", context)
     

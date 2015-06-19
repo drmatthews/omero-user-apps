@@ -1,4 +1,4 @@
-
+{% extends "omero_graph/base.html" %}
 {% load i18n %}
 
 {% block link %}
@@ -20,7 +20,7 @@
 	{% if annotations %}
 	    <ul>{% for annotation in annotations %}
 			<li>
-				<a href="{% url 'show' annotation.id %}">{{ annotation.getFile.getName }}</a>
+				<a href="{% url 'plot' annotation.id %}">{{ annotation.getFile.getName }}</a>
 			    <input type="checkbox" name="skip header" value="first line header?" />{{email}}<br />
 			</li>
 	    {% endfor %}</ul>
