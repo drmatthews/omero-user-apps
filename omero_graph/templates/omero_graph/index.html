@@ -6,18 +6,48 @@
     <link rel="stylesheet" type="text/css" href="{% static "webgateway/css/ome.body.css" %}"/>
     <link rel="stylesheet" href="{% static "webgateway/css/ome.table.css"|add:url_suffix %}" type="text/css" media="screen"/>
     <link rel="stylesheet" href="{% static "3rdparty/jquery.tablesorter-2.0.3/jquery.tablesorter.css" %}" type="text/css" media="screen"/>
+	<link rel="stylesheet" href="{% static '3rdparty/jquery.chosen-1.2.0/chosen.css' %}" type="text/css" media="screen"/>
 {% endblock %}
 
 {% block script %}
 	{{ block.super }}
+	<script type="text/javascript" src="{% static '3rdparty/jquery.chosen-1.2.0/chosen.jquery.js' %}"></script>
 	<script type="text/javascript">
 	$(document).ready(function() {
-		
+		$("#id_annotation").chosen({disable_search_threshold: 10,placeholder_text:'Choose annotation to plot'});
 		$("#setup_container").hide();
-		$("#annotation_list").on("click", "li", function(event) {
+		
+		var frm = $('#annotation_form');
+		frm.submit(function(event) {
 			event.preventDefault();
-		    var idx = $(this).index();
-		    console.log(idx)
+			var annotation = $('#id_annotation').val();
+			console.log(annotation)
+			$.ajax({
+				traditional: true,
+				type: "POST",
+				url: frm.attr('action'),
+				data : {'annotation' : annotation},
+				success: function(results) {
+					console.log(results)
+					$.ajax({
+						traditional: true,
+						type: "POST",
+						url: "plot/"+results.id+"/",
+						data : {'annotation' : annotation},
+						success: function(results) {
+							console.log(results)
+							$("#setup_container").show();
+						},
+		  			  	error: function(error) {
+		  			    	console.log(error)
+		  			  	}
+					});
+					//$("#setup_container").show();
+			  },
+			  error: function(error) {
+			    console.log(error)
+			  }
+			});
 		});
 	});
 	</script>
@@ -35,15 +65,16 @@
 	{% if annotations %}
 		<form action="{% url 'find' %}" method="POST" id="annotation_form">{% csrf_token %}
 		    {{form.as_p}}
+			<button type="submit">Plot</button>
 		</form>
-	    <ul id="annotation_list">{% for annotation in annotations %}
-			<li>
-				<a href="{% url 'plot' annotation.id %}">{{ annotation.getFile.getName }}</a></br>
-			</li>
-	    {% endfor %}</ul>
 	{% else %}
 	    <p>No annotations.</p>
 	{% endif %}
-	<div id="setup_container" style="width:100%; height:400px;"></div>
+	<div id="setup_container">
+		<form action="" method="POST" id="plotform">{% csrf_token %}
+		    {{setup_form.as_p}}
+		    <button type="submit">Plot</button>
+		</form>
+	</div>
 </div>
 {% endblock %}

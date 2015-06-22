@@ -116,10 +116,39 @@ def get_user_annotations(conn,extensions=('txt','csv','xls')):
 def index(request, conn=None, **kwargs):
     userFullName = conn.getUser().getFullName()
     anns,names = get_user_annotations(conn)
+    form_names = []
+    for name in names:
+        form_names.append((name,name))
+    form = AnnotationsForm(options=form_names)
     context = {'userFullName': userFullName,
                'annotations': anns,
-               'annotation_names': names }
+               'annotation_names': names, 
+               'form': form}
     return render(request, "omero_graph/index.html", context)
+    
+@login_required()
+def index(request, conn=None, **kwargs):
+    userFullName = conn.getUser().getFullName()
+    anns,names = get_user_annotations(conn)
+    form_names = []
+    for name in names:
+        form_names.append((name,name))
+    if request.POST:
+        form = AnnotationsForm(options=form_names,data=request.POST)
+        if form.is_valid():
+            selected = form.cleaned_data['annotation']
+            annId = selected.partition(' ')[0][3:]
+            rv = {'selected': selected,
+                  'id': annId}
+            data = json.dumps(rv)
+            return HttpResponse(data, mimetype='application/json')
+    else:
+        form = AnnotationsForm(options=form_names)
+        context = {'userFullName': userFullName,
+                   'annotations': anns,
+                   'annotation_names': names, 
+                   'form': form}
+        return render(request, "omero_graph/index.html", context)
             
 @login_required()
 def plot(request, annotation_id=None, conn=None, **kwargs):
@@ -145,12 +174,12 @@ def plot(request, annotation_id=None, conn=None, **kwargs):
             return HttpResponse(data, mimetype='application/json')
     else:
         form = GraphForm(options=cols)
-        graph_data = {'annotation': annotation,
-                   'columns': cols,'form': form}
-        data = json.dumps(graph_data)
-        return HttpResponse(data, mimetype='application/json')
+        #graph_data = {'annotation': annotation,
+        #           'columns': cols,'form': form}
+        #data = json.dumps(graph_data)
+        #return HttpResponse(data, mimetype='application/json')
         
-    #context = {'annotation': annotation,
-    #           'columns': cols,'form': form}
-    #return render(request,"omero_graph/plot.html", context)
+    context = {'annotation': annotation,
+               'columns': cols,'setup_form': form}
+    return render(request,"omero_graph/plot.html", context)
     
