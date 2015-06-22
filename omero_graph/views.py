@@ -1,13 +1,13 @@
 from django.http import Http404, HttpResponse
 from django.shortcuts import render
-from django.utils import simplejson
-from forms import GraphForm
+from forms import AnnotationsForm,GraphForm
 
 import os
 from math import floor
 from collections import defaultdict
 import numpy as np
 import pandas as pd
+import json
 
 import omero
 from omeroweb.webclient.decorators import login_required
@@ -21,27 +21,34 @@ def get_column(path,col):
             data = pd.read_csv(t_in,header=1,\
                                sep=r'\t|,',engine='python',\
                                skiprows=range(num_lines-50,num_lines),\
-                               index_col=False)  
-        return list(data[col].values)       
+                               index_col=False)
+
+        if type(col) != list:
+            return list(data[col].values)
+        else:
+            vals = []    
+            for c in col:
+                vals.append(list(data[c].values))
+            return vals      
     except:
         print 'there was a problem parsing the data'
         return None
         
 def parse_annotation(path):
     num_lines = sum(1 for line in open(path))
-    #try:
-    with open(path) as t_in:
-        data = pd.read_csv(t_in,header=1,\
-                           sep=r'\t|,',engine='python',\
-                           skiprows=range(num_lines-50,num_lines),\
-                           index_col=False)  
-    columns = []
-    for col in data.columns.values:
-        columns.append((col,col)) 
-    return columns        
-    #except:
-    #    print 'there was a problem parsing the data'
-    #    return None
+    try:
+        with open(path) as t_in:
+            data = pd.read_csv(t_in,header=1,\
+                               sep=r'\t|,',engine='python',\
+                               skiprows=range(num_lines-50,num_lines),\
+                               index_col=False)  
+        columns = []
+        for col in data.columns.values:
+            columns.append((col,col)) 
+        return columns        
+    except:
+        print 'there was a problem parsing the data'
+        return None
         
 def download_annotation(ann):
     """
@@ -113,15 +120,15 @@ def index(request, conn=None, **kwargs):
                'annotations': anns,
                'annotation_names': names }
     return render(request, "omero_graph/index.html", context)
-    
+            
 @login_required()
-def plot(request, annotation_id, conn=None, **kwargs):
+def plot(request, annotation_id=None, conn=None, **kwargs):
     annotation = conn.getObject("Annotation",annotation_id)
     fpath = download_annotation(annotation)
     cols = parse_annotation(fpath)
-    if request.POST:
-        form = GraphForm(options=cols,data=request.POST)
-        print form.is_valid()
+    if request.POST and annotation_id:
+        print request.POST
+        form = GraphForm(options=cols,data=request.POST.copy())
         if form.is_valid():
             title = annotation.getFile().getName()
             x = form.cleaned_data['x']
@@ -132,13 +139,18 @@ def plot(request, annotation_id, conn=None, **kwargs):
             ydata = get_column(fpath,y)
             plot_data = {'title': title, 'x' : x, 'y' : y,\
                          'xdata': xdata, 'ydata': ydata,\
+                         'num_series': len(ydata),
                          'xmin': xmin, 'xmax': xmax}
-            data = simplejson.dumps(plot_data)
+            data = json.dumps(plot_data)
             return HttpResponse(data, mimetype='application/json')
     else:
         form = GraphForm(options=cols)
-    
-    context = {'annotation': annotation,
-               'columns': cols,'form': form}
-    return render(request,"omero_graph/plot.html", context)
+        graph_data = {'annotation': annotation,
+                   'columns': cols,'form': form}
+        data = json.dumps(graph_data)
+        return HttpResponse(data, mimetype='application/json')
+        
+    #context = {'annotation': annotation,
+    #           'columns': cols,'form': form}
+    #return render(request,"omero_graph/plot.html", context)
     

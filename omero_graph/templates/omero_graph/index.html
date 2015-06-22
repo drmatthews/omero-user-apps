@@ -8,6 +8,21 @@
     <link rel="stylesheet" href="{% static "3rdparty/jquery.tablesorter-2.0.3/jquery.tablesorter.css" %}" type="text/css" media="screen"/>
 {% endblock %}
 
+{% block script %}
+	{{ block.super }}
+	<script type="text/javascript">
+	$(document).ready(function() {
+		
+		$("#setup_container").hide();
+		$("#annotation_list").on("click", "li", function(event) {
+			event.preventDefault();
+		    var idx = $(this).index();
+		    console.log(idx)
+		});
+	});
+	</script>
+{% endblock%}
+
 {% block title %}
     Graphs
 {% endblock %}
@@ -18,18 +33,17 @@
 <div class="one_column_content">
 	<h1>Annotations for {{ userFullName }}</h1>
 	{% if annotations %}
-	    <ul>{% for annotation in annotations %}
+		<form action="{% url 'find' %}" method="POST" id="annotation_form">{% csrf_token %}
+		    {{form.as_p}}
+		</form>
+	    <ul id="annotation_list">{% for annotation in annotations %}
 			<li>
-				<a href="{% url 'plot' annotation.id %}">{{ annotation.getFile.getName }}</a>
-			    <input type="checkbox" name="skip header" value="first line header?" />{{email}}<br />
+				<a href="{% url 'plot' annotation.id %}">{{ annotation.getFile.getName }}</a></br>
 			</li>
 	    {% endfor %}</ul>
 	{% else %}
 	    <p>No annotations.</p>
 	{% endif %}
-
-	{% block metadata_details %}
-	    <br/>
-	{% endblock %}
+	<div id="setup_container" style="width:100%; height:400px;"></div>
 </div>
 {% endblock %}
