@@ -15,34 +15,94 @@
 	<script type="text/javascript">
 	$(document).ready(function() {
 		$("#id_annotation").chosen({disable_search_threshold: 10,placeholder_text:'Choose annotation to plot'});
-		$("#setup_container").hide();
+		$("#id_x").chosen({disable_search_threshold: 10,placeholder_text:'Choose columns to plot',width: "300px"});
+		$("#id_y").chosen({disable_search_threshold: 10,placeholder_text:'Choose columns to plot',width: "300px"});
 		
-		var frm = $('#annotation_form');
-		frm.submit(function(event) {
+		$("#setup_container").hide();
+		$("#plot_container").hide();
+		
+		var ann_frm = $('#annotation_form');
+		ann_frm.on("change",function(event) {
 			event.preventDefault();
 			var annotation = $('#id_annotation').val();
 			console.log(annotation)
 			$.ajax({
 				traditional: true,
 				type: "POST",
-				url: frm.attr('action'),
+				url: ann_frm.attr('action'),
 				data : {'annotation' : annotation},
 				success: function(results) {
-					console.log(results)
-					$.ajax({
-						traditional: true,
-						type: "POST",
-						url: "plot/"+results.id+"/",
-						data : {'annotation' : annotation},
-						success: function(results) {
-							console.log(results)
-							$("#setup_container").show();
-						},
-		  			  	error: function(error) {
-		  			    	console.log(error)
-		  			  	}
-					});
-					//$("#setup_container").show();
+					console.log("results",results)
+					var xoptions = $("#id_x");
+					var yoptions = $("#id_y");
+					var columns = results.columns;
+					$("#id_x").empty();
+					$("#id_y").empty();
+					for (i = 0; i < columns.length; i++) {
+						xoptions.append($("<option />").val(columns[i][0]).text(columns[i][1]));
+						yoptions.append($("<option />").val(columns[i][0]).text(columns[i][1]));
+					}
+					$("#id_annId").val(String(results.id));
+					$("#id_x").trigger("chosen:updated");
+					$("#id_y").trigger("chosen:updated");
+					$("#setup_container").show();
+			  },
+			  error: function(error) {
+			    console.log(error)
+			  }
+			});
+		});
+		var plot_frm = $('#plotform');
+		plot_frm.submit(function(event) {
+			event.preventDefault();
+			var x = $('#id_x').val();
+			var y = $('#id_y').val();
+			var annId = $("#id_annId").val();
+			console.log("the form has beeen submitted");
+			console.log("annId:", annId, "x:",x,"y:",y)
+			$.ajax({
+				traditional: true,
+				type: "POST",
+				url: "/omero_graph/plot/"+annId+"/",
+				data : {'annId': annId, 'x' : x, 'y': y},
+				success: function(plotresults) {
+					console.log(plotresults)
+					series = generateData(plotresults.ydata);
+
+					function generateData(seriesdata) {
+					    series = [];
+					    for (i = 0; i < seriesdata.length; i++) {
+					        var d = seriesdata[i];
+				            series.push({
+								name: 'Series'+String(i),
+				                data: d
+				            });
+					    }
+						console.log(series)
+					    return series;
+					}
+					$("#id_annotation").trigger("liszt:updated");
+					$('#plot_container').show();
+				    $('#plot_container').highcharts({
+				        chart: {
+				            type: 'line'
+				        },
+				        title: {
+				            text: plotresults.title
+				        },
+				        xAxis: {
+							allowDecimals: false,
+							title: {text: x},
+				            tickInterval: 10,
+							categories: plotresults.xdata
+				        },
+				        yAxis: {
+				            title: {
+				                text: y
+				            }
+				        },
+				        series: series
+				    });
 			  },
 			  error: function(error) {
 			    console.log(error)
@@ -63,18 +123,21 @@
 <div class="one_column_content">
 	<h1>Annotations for {{ userFullName }}</h1>
 	{% if annotations %}
-		<form action="{% url 'find' %}" method="POST" id="annotation_form">{% csrf_token %}
-		    {{form.as_p}}
-			<button type="submit">Plot</button>
+		<form style="display:inline;" action="{% url 'find' %}" method="POST" id="annotation_form">{% csrf_token %}
+			{% for field in form %}
+		    	<p>{{ field }}</br></p>
+			{% endfor %}
+			<input value="Submit" type="submit" />
 		</form>
 	{% else %}
 	    <p>No annotations.</p>
 	{% endif %}
 	<div id="setup_container">
 		<form action="" method="POST" id="plotform">{% csrf_token %}
-		    {{setup_form.as_p}}
+		    {{graph_form.as_p}}
 		    <button type="submit">Plot</button>
 		</form>
 	</div>
+	<div id="plot_container" style="width:100%; height:400px;"></div>
 </div>
 {% endblock %}

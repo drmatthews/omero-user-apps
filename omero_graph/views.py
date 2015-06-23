@@ -111,26 +111,12 @@ def get_user_annotations(conn,extensions=('txt','csv','xls')):
         
     return filtered_anns,filtered_names
 
-
-@login_required()
-def index(request, conn=None, **kwargs):
-    userFullName = conn.getUser().getFullName()
-    anns,names = get_user_annotations(conn)
-    form_names = []
-    for name in names:
-        form_names.append((name,name))
-    form = AnnotationsForm(options=form_names)
-    context = {'userFullName': userFullName,
-               'annotations': anns,
-               'annotation_names': names, 
-               'form': form}
-    return render(request, "omero_graph/index.html", context)
     
 @login_required()
 def index(request, conn=None, **kwargs):
     userFullName = conn.getUser().getFullName()
     anns,names = get_user_annotations(conn)
-    form_names = []
+    form_names = [(" "," ")]
     for name in names:
         form_names.append((name,name))
     if request.POST:
@@ -138,16 +124,21 @@ def index(request, conn=None, **kwargs):
         if form.is_valid():
             selected = form.cleaned_data['annotation']
             annId = selected.partition(' ')[0][3:]
+            annotation = conn.getObject("Annotation",annId)
+            fpath = download_annotation(annotation)
+            cols = parse_annotation(fpath)
             rv = {'selected': selected,
-                  'id': annId}
+                  'id': annId, 'columns': cols}
             data = json.dumps(rv)
             return HttpResponse(data, mimetype='application/json')
     else:
-        form = AnnotationsForm(options=form_names)
+        print form_names
+        ann_form = AnnotationsForm(options=form_names)
+        graph_form = GraphForm(options=(('x','x'),('y','y')))
         context = {'userFullName': userFullName,
                    'annotations': anns,
                    'annotation_names': names, 
-                   'form': form}
+                   'form': ann_form, 'graph_form': graph_form}
         return render(request, "omero_graph/index.html", context)
             
 @login_required()
@@ -155,10 +146,10 @@ def plot(request, annotation_id=None, conn=None, **kwargs):
     annotation = conn.getObject("Annotation",annotation_id)
     fpath = download_annotation(annotation)
     cols = parse_annotation(fpath)
-    if request.POST and annotation_id:
-        print request.POST
+    if request.POST:
         form = GraphForm(options=cols,data=request.POST.copy())
         if form.is_valid():
+            annId = form.cleaned_data['annId']
             title = annotation.getFile().getName()
             x = form.cleaned_data['x']
             y = form.cleaned_data['y']
@@ -166,20 +157,10 @@ def plot(request, annotation_id=None, conn=None, **kwargs):
             xmin = min(xdata)
             xmax = max(xdata)
             ydata = get_column(fpath,y)
-            plot_data = {'title': title, 'x' : x, 'y' : y,\
+            rv = {'title': title, 'x' : x, 'y' : y,\
                          'xdata': xdata, 'ydata': ydata,\
                          'num_series': len(ydata),
                          'xmin': xmin, 'xmax': xmax}
-            data = json.dumps(plot_data)
+            data = json.dumps(rv)
             return HttpResponse(data, mimetype='application/json')
-    else:
-        form = GraphForm(options=cols)
-        #graph_data = {'annotation': annotation,
-        #           'columns': cols,'form': form}
-        #data = json.dumps(graph_data)
-        #return HttpResponse(data, mimetype='application/json')
-        
-    context = {'annotation': annotation,
-               'columns': cols,'setup_form': form}
-    return render(request,"omero_graph/plot.html", context)
     
