@@ -7,7 +7,8 @@ class AnnotationsForm(forms.Form):
         self.fields['annotation'].choices = options
 
     annotation = ChoiceField(choices=(),required=True)
-    header = IntegerField(required=False)
+    header = IntegerField(required=False,min_value=1)
+    sheet = IntegerField(required=False,min_value=1)
     
 class GraphForm(forms.Form):
     def __init__(self, options=None, *args, **kwargs):

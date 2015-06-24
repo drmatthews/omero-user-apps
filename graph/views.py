@@ -1,4 +1,4 @@
-from django.http import Http404, HttpResponse
+from django.http import Http404, HttpResponse, HttpResponseBadRequest
 from django.shortcuts import render
 from forms import AnnotationsForm,GraphForm
 
@@ -14,14 +14,19 @@ from omeroweb.webclient.decorators import login_required
 
 PATH = '/Users/uqdmatt2/Desktop/temp'
 
-def get_column(path,col):
-    num_lines = sum(1 for line in open(path))
+def get_column(path,ext,col,header_row,sheet):
+
     try:
-        with open(path) as t_in:
-            data = pd.read_csv(t_in,header=1,\
-                               sep=r'\t|,',engine='python',\
-                               skiprows=range(num_lines-50,num_lines),\
-                               index_col=False)
+        if ('xls' in ext):
+            with open(path) as t_in:
+                data = pd.read_excel(t_in,header=header_row,sheetname=sheet,\
+                                   engine='xlrd',
+                                   index_col=False)
+        else:
+            with open(path) as t_in:
+                data = pd.read_csv(t_in,header=header_row,\
+                                   sep=r'\t|,',engine='python',\
+                                   index_col=False)
 
         if type(col) != list:
             return list(data[col].values)
@@ -34,18 +39,30 @@ def get_column(path,col):
         print 'there was a problem parsing the data'
         return None
         
-def parse_annotation(path,header_row):
-    num_lines = sum(1 for line in open(path))
+def parse_annotation(path,ext,header_row,sheet):
     try:
-        with open(path) as t_in:
-            data = pd.read_csv(t_in,header=header_row,\
-                               sep=r'\t|,',engine='python',\
-                               skiprows=range(num_lines-50,num_lines),\
-                               index_col=False)  
-        columns = []
-        for col in data.columns.values:
-            columns.append((col,col)) 
-        return columns        
+        if ('xls' in ext):
+            with open(path) as t_in:
+                data = pd.read_excel(t_in,header=header_row,sheetname=sheet,\
+                                   engine='xlrd',
+                                   index_col=False)
+        else:
+            with open(path) as t_in:
+                data = pd.read_csv(t_in,header=header_row,\
+                                   sep=r'\t|,',engine='python',\
+                                   index_col=False)
+    
+        num_rows = len(data.index)
+        if num_rows < 1000:
+            columns = [(" ", " ")]
+            for col in data.columns.values:
+                columns.append((col,col))
+            message = "Sucessfully processed %s for plotting" % os.path.basename(path) 
+            return columns,message  
+        else:
+            columns = None
+            message = "Unfortunately that dataset has too many columns for plotting" 
+            return columns,message
     except:
         print 'there was a problem parsing the data'
         return None
@@ -78,7 +95,7 @@ def find_duplicate_annotations(mylist):
         D[item].append(i)
     return {k:v for k,v in D.items() if len(v)>1}
     
-def get_user_annotations(conn,extensions=('txt','csv','xls')):
+def get_user_annotations(conn,extensions=('txt','csv','xls','xlsx')):
 
     params = omero.sys.ParametersI()
     params.exp(conn.getUser().getId())  # only show current user's Datasets
@@ -123,19 +140,31 @@ def index(request, conn=None, **kwargs):
         form = AnnotationsForm(options=form_names,data=request.POST)
         if form.is_valid():
             selected = form.cleaned_data['annotation']
+            
             header_row = 1
-            if form.cleaned_data['header']:
+            if form.cleaned_data['header'] is not None:
                 header_row = form.cleaned_data['header']
-            print "header_row", header_row
+
+            sheet = 1
+            if form.cleaned_data['sheet'] is not None:
+                header_row = form.cleaned_data['sheet']
+                                
             annId = selected.partition(' ')[0][3:]
             request.session['annotation_id'] = annId
             request.session['header'] = header_row
+            request.session['sheet'] = sheet
             annotation = conn.getObject("Annotation",annId)
             fpath = download_annotation(annotation)
-            cols = parse_annotation(fpath,header_row)
-            rv = {'selected': selected,'columns': cols}
-            data = json.dumps(rv)
-            return HttpResponse(data, mimetype='application/json')
+            fname, fextension = os.path.splitext(fpath)
+            cols,message = parse_annotation(fpath,fextension,header_row,sheet)
+            if cols is not None:
+                rv = {'success':True,'message':message,'selected': selected,'columns': cols}
+                data = json.dumps(rv)
+                return HttpResponse(data, mimetype='application/json')
+            else:
+                rv = {'success':False,'message':message}
+                error = json.dumps(rv)
+                return HttpResponseBadRequest(error, mimetype='application/json')
     else:
         ann_form = AnnotationsForm(options=form_names)
         num_xls = len([name for name in names if '.xls' in name])
@@ -147,7 +176,7 @@ def index(request, conn=None, **kwargs):
                    'annotation_names': names, 'num_xls': num_xls,
                    'num_csv': num_csv, 'num_txt': num_txt,
                    'form': ann_form, 'graph_form': graph_form}
-        return render(request, "omero_graph/index.html", context)
+        return render(request, "graph/index.html", context)
             
 @login_required()
 def plot(request, conn=None, **kwargs):
@@ -155,21 +184,24 @@ def plot(request, conn=None, **kwargs):
     annotation = conn.getObject("Annotation",annotation_id)
     fpath = download_annotation(annotation)
     header_row = request.session['header']
-    cols = parse_annotation(fpath,header_row)
+    sheet = request.session['sheet']
+    fname, fextension = os.path.splitext(fpath)
+    cols,message = parse_annotation(fpath,fextension,header_row,sheet)
     if request.POST:
         form = GraphForm(options=cols,data=request.POST.copy())
         if form.is_valid():
             title = annotation.getFile().getName()
             x = form.cleaned_data['x']
             y = form.cleaned_data['y']
-            xdata = [floor(xd) for xd in get_column(fpath,x)]
+            xdata = [floor(xd) for xd in get_column(fpath,fextension,x,header_row,sheet)]
             xmin = min(xdata)
             xmax = max(xdata)
-            ydata = get_column(fpath,y)
-            rv = {'title': title, 'x' : x, 'y' : y,\
-                         'xdata': xdata, 'ydata': ydata,\
-                         'num_series': len(ydata),
-                         'xmin': xmin, 'xmax': xmax}
+            ydata = get_column(fpath,fextension,y,header_row,sheet)
+            rv = {'message': message,\
+                  'title': title, 'x' : x, 'y' : y,\
+                  'xdata': xdata, 'ydata': ydata,\
+                  'num_series': len(ydata),
+                  'xmin': xmin, 'xmax': xmax}
             data = json.dumps(rv)
             return HttpResponse(data, mimetype='application/json')
     

@@ -1,5 +1,5 @@
 from django.conf.urls import *
-from omero_graph import views
+from graph import views
 
 urlpatterns = patterns('django.views.generic.simple',
 
