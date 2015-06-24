@@ -34,11 +34,11 @@ def get_column(path,col):
         print 'there was a problem parsing the data'
         return None
         
-def parse_annotation(path):
+def parse_annotation(path,header_row):
     num_lines = sum(1 for line in open(path))
     try:
         with open(path) as t_in:
-            data = pd.read_csv(t_in,header=1,\
+            data = pd.read_csv(t_in,header=header_row,\
                                sep=r'\t|,',engine='python',\
                                skiprows=range(num_lines-50,num_lines),\
                                index_col=False)  
@@ -123,33 +123,42 @@ def index(request, conn=None, **kwargs):
         form = AnnotationsForm(options=form_names,data=request.POST)
         if form.is_valid():
             selected = form.cleaned_data['annotation']
+            header_row = 1
+            if form.cleaned_data['header']:
+                header_row = form.cleaned_data['header']
+            print "header_row", header_row
             annId = selected.partition(' ')[0][3:]
+            request.session['annotation_id'] = annId
+            request.session['header'] = header_row
             annotation = conn.getObject("Annotation",annId)
             fpath = download_annotation(annotation)
-            cols = parse_annotation(fpath)
-            rv = {'selected': selected,
-                  'id': annId, 'columns': cols}
+            cols = parse_annotation(fpath,header_row)
+            rv = {'selected': selected,'columns': cols}
             data = json.dumps(rv)
             return HttpResponse(data, mimetype='application/json')
     else:
-        print form_names
         ann_form = AnnotationsForm(options=form_names)
+        num_xls = len([name for name in names if '.xls' in name])
+        num_txt = len([name for name in names if '.txt' in name])
+        num_csv = len([name for name in names if '.csv' in name])
         graph_form = GraphForm(options=(('x','x'),('y','y')))
         context = {'userFullName': userFullName,
-                   'annotations': anns,
-                   'annotation_names': names, 
+                   'annotations': anns,'num_annotations': len(anns),
+                   'annotation_names': names, 'num_xls': num_xls,
+                   'num_csv': num_csv, 'num_txt': num_txt,
                    'form': ann_form, 'graph_form': graph_form}
         return render(request, "omero_graph/index.html", context)
             
 @login_required()
-def plot(request, annotation_id=None, conn=None, **kwargs):
+def plot(request, conn=None, **kwargs):
+    annotation_id = request.session['annotation_id']
     annotation = conn.getObject("Annotation",annotation_id)
     fpath = download_annotation(annotation)
-    cols = parse_annotation(fpath)
+    header_row = request.session['header']
+    cols = parse_annotation(fpath,header_row)
     if request.POST:
         form = GraphForm(options=cols,data=request.POST.copy())
         if form.is_valid():
-            annId = form.cleaned_data['annId']
             title = annotation.getFile().getName()
             x = form.cleaned_data['x']
             y = form.cleaned_data['y']

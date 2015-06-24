@@ -1,0 +1,101 @@
+{% extends "omero_graph/base.html" %}
+{% load i18n %}
+
+{% block link %}
+    {{ block.super }}
+    <link rel="stylesheet" type="text/css" href="{% static "webgateway/css/ome.body.css" %}"/>
+    <link rel="stylesheet" href="{% static "webgateway/css/ome.table.css"|add:url_suffix %}" type="text/css" media="screen"/>
+    <link rel="stylesheet" href="{% static "3rdparty/jquery.tablesorter-2.0.3/jquery.tablesorter.css" %}" type="text/css" media="screen"/>
+    <link rel="stylesheet" href="{% static '3rdparty/jquery.chosen-1.2.0/chosen.css' %}" type="text/css" media="screen"/>
+{% endblock %}
+
+{% block script %}
+	{{ block.super }}
+	<script type="text/javascript" src="{% static '3rdparty/jquery.chosen-1.2.0/chosen.jquery.js' %}"></script>
+	<script type="text/javascript">
+	$(document).ready(function() {
+		
+		$('#plot_container').hide();
+		$("#id_x").chosen({disable_search_threshold: 10,placeholder_text:'Choose columns to plot'});
+		$("#id_y").chosen({disable_search_threshold: 10,placeholder_text:'Choose columns to plot',width: "300px"});
+		// grab values
+		var frm = $('#plotform');
+		
+		// on form submission ...
+		frm.submit(function(event) {
+			event.preventDefault();
+			var x = $('#id_x').val();
+			var y = $('#id_y').val();
+			console.log("the form has beeen submitted");
+			console.log("x:",x,"y:",y)
+			$.ajax({
+				traditional: true,
+				type: "POST",
+				url: frm.attr('action'),
+				data : {'x' : x, 'y': y},
+				success: function(results) {
+					console.log(results)
+					series = generateData(results.ydata);
+
+					function generateData(seriesdata) {
+					    series = [];
+					    for (i = 0; i < seriesdata.length; i++) {
+					        var d = seriesdata[i];
+				            series.push({
+								name: 'Series'+String(i),
+				                data: d
+				            });
+					    }
+						console.log(series)
+					    return series;
+					}
+					$('#plot_container').show();
+				    $('#plot_container').highcharts({
+				        chart: {
+				            type: 'line'
+				        },
+				        title: {
+				            text: results.title
+				        },
+				        xAxis: {
+							allowDecimals: false,
+							title: {text: x},
+				            tickInterval: 10,
+							categories: results.xdata
+				        },
+				        yAxis: {
+				            title: {
+				                text: y
+				            }
+				        },
+				        series: series
+				    });
+			  },
+			  error: function(error) {
+			    console.log(error)
+			  }
+			});
+		});
+	});
+	</script>
+{% endblock %}
+{% block title %}
+    Graphs
+{% endblock %}
+
+{% block center_details %}
+{{ block.super }}
+
+<div class="one_column_content">
+	{% if form.errors %}<p><strong>{{ form.errors }}</strong></p>{% endif %}
+	<form action="{% url 'plot' annotation.id %}" method="POST" id="plotform">{% csrf_token %}
+	    {{form.as_p}}
+	    <button type="submit">Plot</button>
+	</form>
+	{% block metadata_details %}
+	    <br/>
+	{% endblock %}
+</div>
+<div id="plot_container" style="width:100%; height:400px;"></div>
+</div>
+{% endblock %}

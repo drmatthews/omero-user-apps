@@ -15,34 +15,39 @@
 	<script type="text/javascript">
 	$(document).ready(function() {
 		$("#id_annotation").chosen({disable_search_threshold: 10,placeholder_text:'Choose annotation to plot'});
-		$("#id_x").chosen({disable_search_threshold: 10,placeholder_text:'Choose columns to plot',width: "300px"});
+		$("#id_x").chosen({disable_search_threshold: 10,placeholder_text:'Choose data for x axis',width: "300px"});
 		$("#id_y").chosen({disable_search_threshold: 10,placeholder_text:'Choose columns to plot',width: "300px"});
 		
 		$("#setup_container").hide();
 		$("#plot_container").hide();
 		
+		//global annotation id
+		var annId = 0;
+		
 		var ann_frm = $('#annotation_form');
-		ann_frm.on("change",function(event) {
+		ann_frm.submit(function(event) {
 			event.preventDefault();
 			var annotation = $('#id_annotation').val();
+			var header = $('#id_header').val();
 			console.log(annotation)
 			$.ajax({
 				traditional: true,
 				type: "POST",
 				url: ann_frm.attr('action'),
-				data : {'annotation' : annotation},
+				data : {'annotation' : annotation, 'header': header},
 				success: function(results) {
-					console.log("results",results)
 					var xoptions = $("#id_x");
 					var yoptions = $("#id_y");
 					var columns = results.columns;
 					$("#id_x").empty();
 					$("#id_y").empty();
-					for (i = 0; i < columns.length; i++) {
+					xoptions.append($("<option />").val("").text(""));
+					for (i = 1; i < columns.length; i++) {
 						xoptions.append($("<option />").val(columns[i][0]).text(columns[i][1]));
+					}
+					for (i = 0; i < columns.length; i++) {
 						yoptions.append($("<option />").val(columns[i][0]).text(columns[i][1]));
 					}
-					$("#id_annId").val(String(results.id));
 					$("#id_x").trigger("chosen:updated");
 					$("#id_y").trigger("chosen:updated");
 					$("#setup_container").show();
@@ -57,14 +62,14 @@
 			event.preventDefault();
 			var x = $('#id_x').val();
 			var y = $('#id_y').val();
-			var annId = $("#id_annId").val();
+			var annId = "{{ request.session.annotation_id }}";
 			console.log("the form has beeen submitted");
-			console.log("annId:", annId, "x:",x,"y:",y)
+			console.log("x:",x,"y:",y)
 			$.ajax({
 				traditional: true,
 				type: "POST",
-				url: "/omero_graph/plot/"+annId+"/",
-				data : {'annId': annId, 'x' : x, 'y': y},
+				url: "/omero_graph/plot/",
+				data : {'x' : x, 'y': y},
 				success: function(plotresults) {
 					console.log(plotresults)
 					series = generateData(plotresults.ydata);
@@ -81,7 +86,7 @@
 						console.log(series)
 					    return series;
 					}
-					$("#id_annotation").trigger("liszt:updated");
+					$('#id_annotation').val('').trigger('liszt:updated');
 					$('#plot_container').show();
 				    $('#plot_container').highcharts({
 				        chart: {
@@ -123,21 +128,25 @@
 <div class="one_column_content">
 	<h1>Annotations for {{ userFullName }}</h1>
 	{% if annotations %}
-		<form style="display:inline;" action="{% url 'find' %}" method="POST" id="annotation_form">{% csrf_token %}
-			{% for field in form %}
-		    	<p>{{ field }}</br></p>
-			{% endfor %}
+		<p>You have a total of {{ num_annotations }} annotations elligible for plotting.<p>
+		<p>There are {{ num_xls }} Excel files, {{ num_csv }} CSV files and {{ num_txt }} TXT files</p>
+		<p>Select an annotation from the list and state which row holds the column names.
+			Leave blank if there are no column names.</p>
+
+		<form class="standard_form settings_form" action="{% url 'find' %}" method="POST" id="annotation_form">{% csrf_token %}
+			{{ form.as_p }}
 			<input value="Submit" type="submit" />
 		</form>
+
 	{% else %}
 	    <p>No annotations.</p>
 	{% endif %}
 	<div id="setup_container">
-		<form action="" method="POST" id="plotform">{% csrf_token %}
+		<form class="standard_form settings_form" action="" method="POST" id="plotform">{% csrf_token %}
 		    {{graph_form.as_p}}
-		    <button type="submit">Plot</button>
+		    <input value="Plot" type="submit" />
 		</form>
 	</div>
-	<div id="plot_container" style="width:100%; height:400px;"></div>
 </div>
+<div id="plot_container" style="width:100%; height:400px;"></div>
 {% endblock %}
