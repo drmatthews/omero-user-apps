@@ -14,17 +14,29 @@ from omeroweb.webclient.decorators import login_required
 
 PATH = '/Users/uqdmatt2/Desktop/temp'
 
+
+def flot_data(xdata,ydata):
+    
+    # ydata is a list of lists
+    fdata = []
+    for yd in ydata:
+        sdata = []
+        for i,y in enumerate(yd):
+            sdata.append([xdata[i],y])
+        fdata.append(sdata)
+    return fdata
+        
 def get_column(path,ext,col,header_row,sheet):
 
     try:
         if ('xls' in ext):
             with open(path) as t_in:
-                data = pd.read_excel(t_in,header=header_row,sheetname=sheet,\
+                data = pd.read_excel(t_in,header=int(header_row),sheetname=sheet,\
                                    engine='xlrd',
                                    index_col=False)
         else:
             with open(path) as t_in:
-                data = pd.read_csv(t_in,header=header_row,\
+                data = pd.read_csv(t_in,header=int(header_row),\
                                    sep=r'\t|,',engine='python',\
                                    index_col=False)
 
@@ -43,12 +55,12 @@ def parse_annotation(path,ext,header_row,sheet):
     try:
         if ('xls' in ext):
             with open(path) as t_in:
-                data = pd.read_excel(t_in,header=header_row,sheetname=sheet,\
+                data = pd.read_excel(t_in,header=int(header_row),sheetname=sheet,\
                                    engine='xlrd',
                                    index_col=False)
         else:
             with open(path) as t_in:
-                data = pd.read_csv(t_in,header=header_row,\
+                data = pd.read_csv(t_in,header=int(header_row),\
                                    sep=r'\t|,',engine='python',\
                                    index_col=False)
     
@@ -197,11 +209,12 @@ def plot(request, conn=None, **kwargs):
             xmin = min(xdata)
             xmax = max(xdata)
             ydata = get_column(fpath,fextension,y,header_row,sheet)
+            flot = flot_data(xdata,ydata)
             rv = {'message': message,\
                   'title': title, 'x' : x, 'y' : y,\
                   'xdata': xdata, 'ydata': ydata,\
                   'num_series': len(ydata),
-                  'xmin': xmin, 'xmax': xmax}
+                  'xmin': xmin, 'xmax': xmax,'flot_data': flot}
             data = json.dumps(rv)
             return HttpResponse(data, mimetype='application/json')
     

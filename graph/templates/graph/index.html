@@ -14,15 +14,17 @@
 	<script type="text/javascript" src="{% static '3rdparty/jquery.chosen-1.2.0/chosen.jquery.js' %}"></script>
 	<script type="text/javascript">
 	$(document).ready(function() {
+		
 		$("#id_annotation").chosen({disable_search_threshold: 10,placeholder_text:'Choose annotation to plot'});
 		$("#id_x").chosen({disable_search_threshold: 10,placeholder_text:'Choose data for x axis',width: "300px"});
 		$("#id_y").chosen({disable_search_threshold: 10,placeholder_text:'Choose columns to plot',width: "300px"});
 		$("#sheet").hide();
 		$("#setup_container").hide();
 		$("#plot_container").hide();
-		
-		var annotation = $('#id_annotation').val();
-		if (annotation.indexOf('xls')>0) {
+		$(".flot-container").hide();
+				
+		//var annotation = $('#id_annotation').val();
+		/*if (annotation.indexOf('xls')>0) {
 			$("#sheet").show();
 		}
 		$('#id_annotation').on('change',function() {
@@ -33,14 +35,14 @@
 			else {
 				$("#sheet").hide();
 			}
-		});
-		var header = $('#id_header').val();
-		
+		});*/
+		//var header = $('#id_header').val();
 		var ann_frm = $('#annotation_form');
 		ann_frm.submit(function(event) {
 			event.preventDefault();
-
-			console.log(annotation)
+			var header = $('#id_header').val();
+			var annotation = $('#id_annotation').val();
+			console.log(header,annotation)
 			$.ajax({
 				traditional: true,
 				type: "POST",
@@ -67,6 +69,7 @@
 	          }
 			});
 		});
+		
 		var plot_frm = $('#plotform');
 		plot_frm.submit(function(event) {
 			event.preventDefault();
@@ -83,42 +86,90 @@
 				success: function(plotresults) {
 					console.log(plotresults)
 					console.log(plotresults.message)
-					series = generateData(plotresults.ydata);
 
-					function generateData(seriesdata) {
+					function generateData(fseriesdata) {
 					    series = [];
-					    for (i = 0; i < seriesdata.length; i++) {
-					        var d = seriesdata[i];
+					    for (fi = 0; fi < fseriesdata.length; fi++) {
+					        var fd = fseriesdata[fi];
 				            series.push({
-								name: 'Series'+String(i),
-				                data: d
+								label: 'Series'+String(fi),
+				                data: fd
 				            });
 					    }
-						console.log(series)
 					    return series;
-					}
+					};
+					var data = generateData(plotresults.flot_data);
 					$('#id_annotation').val('').trigger('liszt:updated');
-					$('#plot_container').show();
-				    $('#plot_container').highcharts({
-				        chart: {
-				            type: 'line'
+					
+					var options = {
+				        axisLabels: {
+				            show: true
 				        },
-				        title: {
-				            text: plotresults.title
-				        },
-				        xAxis: {
-							allowDecimals: false,
-							title: {text: x},
-				            tickInterval: 10,
-							categories: plotresults.xdata
-				        },
-				        yAxis: {
-				            title: {
-				                text: y
-				            }
-				        },
-				        series: series
-				    });
+						xaxes: [{
+						     axisLabel: x,
+						        }],
+				        yaxes: [{
+				            position: 'left',
+				            axisLabel: y,
+				        }],
+						series: {
+							lines: {
+								show: true
+							},
+							points: {
+								show: true
+							}
+						},
+						grid: {
+							hoverable: true,
+							clickable: true
+						},
+						xaxis: {
+							tickDecimals: 0,
+							tickSize: plotresults.xmax / 10
+						}
+					};
+					
+					$(".flot-container").show();
+					$.plot("#flot_placeholder", data, options);
+				    var c = document.getElementsByTagName("canvas")[0];
+					var canvas = c.getContext("2d");
+					var cx = c.width / 2;
+					var cy = c.height;
+					var title = plotresults.title;
+					var xlabel = x;
+					canvas.font = "bold 20px sans-serif";
+					canvas.textAlign = 'center';
+				    canvas.fillText(title,cx,30);
+					
+					var tooltip = $("#tooltip");
+					if (tooltip.length === 0){
+						$("<div id='tooltip'></div>").css({
+							position: "absolute",
+							display: "none",
+							border: "1px solid #fdd",
+							padding: "2px",
+							"background-color": "#fee",
+							opacity: 0.80,
+							font: "18px/1.5em proxima-nova, Helvetica, Arial, sans-serif",
+							color: "#000000"
+						}).appendTo("body");
+					};
+					$("#flot_placeholder").bind("plothover", function (event, pos, item) {
+
+						if ($("#enableTooltip:checked").length > 0) {
+							if (item) {
+								var tipx = item.datapoint[0].toFixed(2),
+									tipy = item.datapoint[1].toFixed(2);
+
+								$("#tooltip").html(item.series.label + ", (x: " + tipx + " , y: " + tipy + ")")
+									.css({top: item.pageY+5, left: item.pageX+5})
+									.fadeIn(200);
+							} else {
+								$("#tooltip").hide();
+							}
+						}
+					});
 			  },
 			  error: function(error) {
 			    console.log(error)
@@ -169,5 +220,10 @@
 		</form>
 	</div>
 </div>
-<div id="plot_container" style="width:100%; height:400px;"></div>
+<div class="flot-container">
+	<div id="flot_placeholder" class="flot-placeholder"></div>
+	<div id="flot_toolbar" class="flot-toolbar">
+		<p><label><input id="enableTooltip" type="checkbox" checked="checked"></input>Enable tooltip</label></p>
+	</div>
+</div>
 {% endblock %}
