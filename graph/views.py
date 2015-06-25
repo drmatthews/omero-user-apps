@@ -1,6 +1,6 @@
 from django.http import Http404, HttpResponse, HttpResponseBadRequest
 from django.shortcuts import render
-from forms import AnnotationsForm,GraphForm
+from forms import PreviewForm,AnnotationsForm,GraphForm
 
 import os
 from math import floor
@@ -8,6 +8,9 @@ from collections import defaultdict
 import numpy as np
 import pandas as pd
 import json
+import csv
+from itertools import islice
+import openpyxl
 
 import omero
 from omeroweb.webclient.decorators import login_required
@@ -25,20 +28,23 @@ def flot_data(xdata,ydata):
             sdata.append([xdata[i],y])
         fdata.append(sdata)
     return fdata
-        
-def get_column(path,ext,col,header_row,sheet):
 
+def get_data(path,ext,header_row,sheet):
+    if ('xls' in ext):
+        with open(path) as t_in:
+            data = pd.read_excel(t_in,header=int(header_row),sheetname=sheet,\
+                               engine='xlrd',
+                               index_col=False)
+    else:
+        with open(path) as t_in:
+            data = pd.read_csv(t_in,header=int(header_row),\
+                               sep=r'\t|,',engine='python',\
+                               index_col=False)
+    return data
+                                   
+def get_column(path,ext,col,header_row,sheet):
     try:
-        if ('xls' in ext):
-            with open(path) as t_in:
-                data = pd.read_excel(t_in,header=int(header_row),sheetname=sheet,\
-                                   engine='xlrd',
-                                   index_col=False)
-        else:
-            with open(path) as t_in:
-                data = pd.read_csv(t_in,header=int(header_row),\
-                                   sep=r'\t|,',engine='python',\
-                                   index_col=False)
+        data = get_data(path,ext,header_row,sheet)
 
         if type(col) != list:
             return list(data[col].values)
@@ -50,19 +56,45 @@ def get_column(path,ext,col,header_row,sheet):
     except:
         print 'there was a problem parsing the data'
         return None
-        
+    
+def preview_data(path,ext,sheet):
+    try:
+        if '.xls' in ext:
+            wb = openpyxl.load_workbook(path)
+            sh = wb.get_sheet_names()[sheet]
+            print sh
+            shdata = wb.get_sheet_by_name(sh)
+            num_rows = shdata.get_highest_row() - 1
+            num_cols = shdata.get_highest_column()
+            data = []
+            for r in range(10):
+                row_data = []
+                for c in range(num_cols):
+                    row_data.append(shdata.cell(row=r+1, column=c+1).value)
+                data.append(row_data)
+        elif '.txt' in ext:
+            num_rows = sum(1 for line in open(path))
+            with open(path) as file:
+                data = list(islice(file, 10))
+        elif '.csv' in ext:
+            num_rows = sum(1 for line in open(path))
+            with open(path) as file:
+                csv_file = csv.reader(file)
+                data = []
+                for i in range(10):
+                    data.append(csv_file.next())
+        print num_rows
+        if num_rows < 1000:
+            return data
+        else:
+            return None
+    except:
+        print 'there was a problem parsing the data'
+        return None
+                
 def parse_annotation(path,ext,header_row,sheet):
     try:
-        if ('xls' in ext):
-            with open(path) as t_in:
-                data = pd.read_excel(t_in,header=int(header_row),sheetname=sheet,\
-                                   engine='xlrd',
-                                   index_col=False)
-        else:
-            with open(path) as t_in:
-                data = pd.read_csv(t_in,header=int(header_row),\
-                                   sep=r'\t|,',engine='python',\
-                                   index_col=False)
+        data = get_data(path,ext,header_row,sheet)
     
         num_rows = len(data.index)
         if num_rows < 1000:
@@ -70,15 +102,15 @@ def parse_annotation(path,ext,header_row,sheet):
             for col in data.columns.values:
                 columns.append((col,col))
             message = "Sucessfully processed %s for plotting" % os.path.basename(path) 
-            return columns,message  
+            return columns,message 
         else:
             columns = None
-            message = "Unfortunately that dataset has too many columns for plotting" 
+            message = "Unfortunately that dataset has too many columns for plotting"
             return columns,message
     except:
         print 'there was a problem parsing the data'
         return None
-        
+                
 def download_annotation(ann):
     """
     Downloads the specified file to and returns the path on the server
@@ -153,11 +185,11 @@ def index(request, conn=None, **kwargs):
         if form.is_valid():
             selected = form.cleaned_data['annotation']
             
-            header_row = 1
+            header_row = 0
             if form.cleaned_data['header'] is not None:
                 header_row = form.cleaned_data['header']
 
-            sheet = 1
+            sheet = 0
             if form.cleaned_data['sheet'] is not None:
                 header_row = form.cleaned_data['sheet']
                                 
@@ -178,18 +210,24 @@ def index(request, conn=None, **kwargs):
                 error = json.dumps(rv)
                 return HttpResponseBadRequest(error, mimetype='application/json')
     else:
-        ann_form = AnnotationsForm(options=form_names)
+        preview_form = PreviewForm(options=form_names,\
+                                   initial={'preview_sheet':0})
+        ann_form = AnnotationsForm(options=form_names,\
+                                   initial={'header':0,\
+                                            'sheet':0})
         num_xls = len([name for name in names if '.xls' in name])
         num_txt = len([name for name in names if '.txt' in name])
         num_csv = len([name for name in names if '.csv' in name])
         graph_form = GraphForm(options=(('x','x'),('y','y')))
+        
         context = {'userFullName': userFullName,
                    'annotations': anns,'num_annotations': len(anns),
                    'annotation_names': names, 'num_xls': num_xls,
                    'num_csv': num_csv, 'num_txt': num_txt,
-                   'form': ann_form, 'graph_form': graph_form}
+                   'form': ann_form, 'graph_form': graph_form,\
+                   'prev_form':preview_form}
         return render(request, "graph/index.html", context)
-            
+        
 @login_required()
 def plot(request, conn=None, **kwargs):
     annotation_id = request.session['annotation_id']
@@ -217,4 +255,33 @@ def plot(request, conn=None, **kwargs):
                   'xmin': xmin, 'xmax': xmax,'flot_data': flot}
             data = json.dumps(rv)
             return HttpResponse(data, mimetype='application/json')
+            
+@login_required()
+def preview(request, conn=None, **kwargs):
+    anns,names = get_user_annotations(conn)
+    form_names = [(" "," ")]
+    for name in names:
+        form_names.append((name,name))
+    if request.POST:
+        form = PreviewForm(options=form_names,data=request.POST)
+        if form.is_valid():
+            selected = form.cleaned_data['preview_annotation']
+
+            sheet = 0
+            if form.cleaned_data['preview_sheet'] is not None:
+                header_row = form.cleaned_data['preview_sheet']
+                                
+            annId = selected.partition(' ')[0][3:]
+            annotation = conn.getObject("Annotation",annId)
+            fpath = download_annotation(annotation)
+            fname, fextension = os.path.splitext(fpath)
+            pdata = preview_data(fpath,fextension,sheet)
+            if pdata is not None:
+                rv = {'preview_data': pdata}
+                data = json.dumps(rv)
+                return HttpResponse(data, mimetype='application/json')
+            else:
+                rv = {'message':"Too many rows"}
+                error = json.dumps(rv)
+                return HttpResponseBadRequest(error, mimetype='application/json')
     

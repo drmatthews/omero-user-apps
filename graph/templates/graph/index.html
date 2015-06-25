@@ -14,19 +14,29 @@
 	<script type="text/javascript" src="{% static '3rdparty/jquery.chosen-1.2.0/chosen.jquery.js' %}"></script>
 	<script type="text/javascript">
 	$(document).ready(function() {
-		
+		$("#id_preview_annotation").chosen({disable_search_threshold: 10,placeholder_text:'Choose annotation to preview'});
 		$("#id_annotation").chosen({disable_search_threshold: 10,placeholder_text:'Choose annotation to plot'});
 		$("#id_x").chosen({disable_search_threshold: 10,placeholder_text:'Choose data for x axis',width: "300px"});
 		$("#id_y").chosen({disable_search_threshold: 10,placeholder_text:'Choose columns to plot',width: "300px"});
+		$("#preview_sheet").hide();
 		$("#sheet").hide();
 		$("#setup_container").hide();
 		$("#plot_container").hide();
 		$(".flot-container").hide();
 				
-		//var annotation = $('#id_annotation').val();
-		/*if (annotation.indexOf('xls')>0) {
+		if ($('#id_annotation').val().indexOf('xls')>0) {
+			$("#preview_sheet").show();
 			$("#sheet").show();
-		}
+		};
+		$('#id_preview_annotation').on('change',function() {
+			var prev_annotation = $('#id_preview_annotation').val();
+			if (prev_annotation.indexOf('xls')>0) {
+				$("#preview_sheet").show();
+			}
+			else {
+				$("#preview_sheet").hide();
+			}
+		});
 		$('#id_annotation').on('change',function() {
 			var annotation = $('#id_annotation').val();
 			if (annotation.indexOf('xls')>0) {
@@ -35,20 +45,55 @@
 			else {
 				$("#sheet").hide();
 			}
-		});*/
-		//var header = $('#id_header').val();
+		});
+
+		var prev_frm = $('#preview_form');
+		prev_frm.submit(function(event) {
+			event.preventDefault();
+			var prev_sheet = $('#id_preview_sheet').val();
+			var prev_annotation = $('#id_preview_annotation').val();
+			$.ajax({
+				traditional: true,
+				type: "POST",
+				url: prev_frm.attr('action'),
+				data : {'preview_annotation' : prev_annotation, 'preview_sheet': prev_sheet},
+				success: function(prevresults) {
+					console.log(prevresults)
+					if ($("#prev_text").length === 0){
+						$("#preview_data").append('<p id=prev_text></p>');
+						for (i=0;i<prevresults.preview_data.length;i++){
+							$("#prev_text").append('Row '+String(i)+':      '+prevresults.preview_data[i]+'</br>');
+						}
+					}
+					else{
+						$("#prev_text").empty();
+						for (i=0;i<prevresults.preview_data.length;i++){
+							$("#prev_text").append('Row '+String(i)+':      '+prevresults.preview_data[i]+'</br>');
+						}
+					};
+			  },
+	          statusCode: {
+	              400: function() {
+	                  alert("Too many rows in annotation");
+				  }
+	          }
+			});
+		});
+		
 		var ann_frm = $('#annotation_form');
 		ann_frm.submit(function(event) {
 			event.preventDefault();
 			var header = $('#id_header').val();
+			var sheet = $('#id_sheet').val();
 			var annotation = $('#id_annotation').val();
 			console.log(header,annotation)
 			$.ajax({
 				traditional: true,
 				type: "POST",
 				url: ann_frm.attr('action'),
-				data : {'annotation' : annotation, 'header': header},
+				data : {'annotation' : annotation, 'header': header, 'sheet': sheet},
 				success: function(results) {
+					console.log(results)
 					var xoptions = $("#id_x");
 					var yoptions = $("#id_y");
 					var columns = results.columns;
@@ -59,7 +104,9 @@
 						yoptions.append($("<option />").val(columns[i][0]).text(columns[i][1]));
 					}
 					$("#id_x").trigger("chosen:updated");
+					$('#id_x').val('').trigger('liszt:updated');
 					$("#id_y").trigger("chosen:updated");
+					$('#id_y').val('').trigger('liszt:updated');
 					$("#setup_container").show();
 			  },
 	          statusCode: {
@@ -69,7 +116,7 @@
 	          }
 			});
 		});
-		
+			
 		var plot_frm = $('#plotform');
 		plot_frm.submit(function(event) {
 			event.preventDefault();
@@ -195,6 +242,20 @@
 		<p>Select an annotation from the list and state which row holds the column names.
 			Leave 'Header' blank if there are no column names.</p>
 
+		<form class="standard_form settings_form" action="{% url 'preview' %}" method="POST" id="preview_form">{% csrf_token %}
+			{{ prev_form.annotation.errors }}
+			{% for field in prev_form %}
+				{% ifequal field.label_tag prev_form.preview_sheet.label_tag %}
+					<p id="preview_sheet">{{ field.label_tag }}
+					   {{ field }}</p>
+				{% else %}
+					<p>{{ field.label_tag }}
+					   {{ field }}</p>
+				{% endifequal %}
+			{% endfor %}
+			<input value="Preview" type="submit" />
+		</form>
+		<div id="preview_data"></div>
 		<form class="standard_form settings_form" action="{% url 'find' %}" method="POST" id="annotation_form">{% csrf_token %}
 			{{ form.annotation.errors }}
 			{% for field in form %}
@@ -206,7 +267,7 @@
 					   {{ field }}</p>
 				{% endifequal %}
 			{% endfor %}
-			<input value="Submit" type="submit" />
+			<input value="Get Columns" type="submit" />
 		</form>
 
 	{% else %}

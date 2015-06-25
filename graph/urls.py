@@ -5,5 +5,6 @@ urlpatterns = patterns('django.views.generic.simple',
 
     url(r'^$', views.index, name='graphs'),
     url(r'^find', views.index, name='find'),
+    url(r'^preview', views.preview, name='preview'),
     url(r'^plot', views.plot, name='plot'),
  )
