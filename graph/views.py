@@ -3,6 +3,7 @@ from django.shortcuts import render
 from forms import PreviewForm,AnnotationsForm,GraphForm
 
 import os
+import re
 from math import floor
 from collections import defaultdict
 import numpy as np
@@ -11,13 +12,48 @@ import json
 import csv
 from itertools import islice
 import openpyxl
+from PIL import Image
+import tempfile
+import shutil
 
 import omero
 from omeroweb.webclient.decorators import login_required
 
-PATH = '/Users/uqdmatt2/Desktop/temp'
+ANNPATH = '/Users/uqdmatt2/Desktop/temp'
+#ANNPATH = tempfile.mkdtemp(prefix='downloaded_annotations')
 
+def upload_graph(conn, path):
+    """
+    This creates a new Image in OMERO using all the images in destination folder as Z-planes
+    """
+    
+    gid = conn.getGroupFromContext().getId()
+    conn.SERVICE_OPTS.setOmeroGroup(gid)
+    
+    # Need to check whether we're dealing with RGB images (3 channels) or greyscale (1 channel)
+    img = Image.open(path)
+    img.load()
+    sizeC = len(img.split())
+    sizeZ = 1
+    sizeT = 1
+    imageName = os.path.basename(path)
+    print 'imageName',imageName
+    # Create a new Image in OMERO, with the jpeg images as a Z-stack.
+    # We need a generator to produce numpy planes in the order Z, C, T.
+    def plane_generator():
+        img = Image.open(path)
+        img.load()      # need to get the data in hand before...
+        channels = img.split()
+        for channel in channels:
+            numpyPlane = np.asarray(channel)
+            yield numpyPlane
 
+    # Create the image
+    plane_gen = plane_generator()
+    newImg = conn.createImageFromNumpySeq(plane_gen, imageName, sizeZ=sizeZ, sizeC=sizeC, sizeT=sizeT)
+    print "New Image ID", newImg.getId()
+    return newImg
+    
 def flot_data(xdata,ydata):
     
     # ydata is a list of lists
@@ -58,31 +94,32 @@ def get_column(path,ext,col,header_row,sheet):
         return None
     
 def preview_data(path,ext,sheet):
+    max_rows = 10
+    max_cols = 10
     try:
         if '.xls' in ext:
             wb = openpyxl.load_workbook(path)
             sh = wb.get_sheet_names()[sheet]
-            print sh
             shdata = wb.get_sheet_by_name(sh)
             num_rows = shdata.get_highest_row() - 1
             num_cols = shdata.get_highest_column()
             data = []
-            for r in range(10):
+            for r in range(max_rows):
                 row_data = []
-                for c in range(num_cols):
+                for c in range(max_cols):
                     row_data.append(shdata.cell(row=r+1, column=c+1).value)
                 data.append(row_data)
         elif '.txt' in ext:
             num_rows = sum(1 for line in open(path))
             with open(path) as file:
-                data = list(islice(file, 10))
+                data = [next(file)[:max_cols] for x in xrange(max_rows)]
         elif '.csv' in ext:
             num_rows = sum(1 for line in open(path))
             with open(path) as file:
                 csv_file = csv.reader(file)
                 data = []
-                for i in range(10):
-                    data.append(csv_file.next())
+                for i in range(max_rows):
+                    data.append(csv_file.next()[:max_cols])
         print num_rows
         if num_rows < 1000:
             return data
@@ -117,9 +154,10 @@ def download_annotation(ann):
     
     @param ann:    the file annotation being downloaded
     """ 
-    if not os.path.exists(PATH):
-        os.makedirs(PATH)
-    file_path = os.path.join(PATH, ann.getFile().getName())
+    
+    if not os.path.exists(ANNPATH):
+        os.makedirs(ANNPATH)
+    file_path = os.path.join(ANNPATH, ann.getFile().getName())
     if os.path.isfile(file_path):
         return file_path
     else:
@@ -191,8 +229,7 @@ def index(request, conn=None, **kwargs):
 
             sheet = 0
             if form.cleaned_data['sheet'] is not None:
-                header_row = form.cleaned_data['sheet']
-                                
+                sheet = form.cleaned_data['sheet']
             annId = selected.partition(' ')[0][3:]
             request.session['annotation_id'] = annId
             request.session['header'] = header_row
@@ -269,7 +306,7 @@ def preview(request, conn=None, **kwargs):
 
             sheet = 0
             if form.cleaned_data['preview_sheet'] is not None:
-                header_row = form.cleaned_data['preview_sheet']
+                sheet = form.cleaned_data['preview_sheet']
                                 
             annId = selected.partition(' ')[0][3:]
             annotation = conn.getObject("Annotation",annId)
@@ -284,4 +321,26 @@ def preview(request, conn=None, **kwargs):
                 rv = {'message':"Too many rows"}
                 error = json.dumps(rv)
                 return HttpResponseBadRequest(error, mimetype='application/json')
-    
+
+@login_required()
+def save(request, conn=None, **kwargs):
+    if request.POST:
+        datauri = request.POST['img']
+        imgstr = re.search(r'base64,(.*)', datauri).group(1)
+        output_dir = tempfile.mkdtemp(prefix='exported_graphs')
+        path = os.path.join(output_dir,"graph.png")
+        output = open(path, 'wb')
+        output.write(imgstr.decode('base64'))
+        output.close()
+        # and upload to omero
+        img = upload_graph(conn,path)
+        if img:
+            shutil.rmtree(output_dir)
+            rv = {'message':"Sucessfully saved"}
+            data = json.dumps(rv)
+            return HttpResponse(data, mimetype='application/json')
+        else:
+            rv = {'message':"Exporting failed"}
+            error = json.dumps(rv)
+            return HttpResponseBadRequest(error, mimetype='application/json')
+        

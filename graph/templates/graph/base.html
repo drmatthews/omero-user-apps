@@ -9,8 +9,9 @@
 
 {% block script %}
 	{{ block.super }}
-	<script src="{% static 'graph/js/jquery.flot.min.js' %}"></script>
+	<script src="{% static 'graph/js/jquery.flot.js' %}"></script>
 	<script src="{% static 'graph/js/jquery.flot.axislabels.js' %}"></script>
+	<script src="{% static 'graph/js/html2canvas.js' %}"></script>
 {% endblock %}
 
 {% block content %}
