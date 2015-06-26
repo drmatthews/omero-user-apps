@@ -155,14 +155,14 @@
 						        },
 						xaxes: [{
 				            axisLabel: x,
-							axisLabelUseCanvas: true,
-							axisLabelPadding: 5
+							//axisLabelUseCanvas: true,
+							//axisLabelPadding: 5
 						        }],
 				        yaxes: [{
 				            position: 'left',
 				            axisLabel: y,
-							axisLabelUseCanvas: true,
-							axisLabelPadding: 5
+							//axisLabelUseCanvas: true,
+							//axisLabelPadding: 5
 				        }],
 						series: {
 							lines: {
@@ -223,7 +223,9 @@
 							}
 						}
 					});
-
+					$(".xaxisLabel").on("click",function(){
+						$(".xaxisLabel").replaceWith("<input></input>");
+					});
 					$('#flot_save').click(function(){
 						$("#flot_toolbar").hide();
 						html2canvas($('#flot_container'), {
@@ -317,7 +319,6 @@
 	<div id="flot_toolbar" class="flot-toolbar">
 		<p><label><input id="enableTooltip" type="checkbox" checked="checked"></input>Enable tooltip</label></p>
 		<button type="button" id="flot_save">Export to OMERO</button>
-		<button type="button" id="xlabeledit">Edit x label</button>
 	</div>
 </div>
 
