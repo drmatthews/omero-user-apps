@@ -4,20 +4,26 @@
 {% block link %}
     {{ block.super }}
     <link rel="stylesheet" href="{% static 'webadmin/css/dusty.css'|add:url_suffix %}" type="text/css" media="screen"/>
+    <link rel="stylesheet" type="text/css" href="{% static "webgateway/css/ome.body.css" %}"/>
+    <link rel="stylesheet" href="{% static "webgateway/css/ome.table.css"|add:url_suffix %}" type="text/css" media="screen"/>
+    <link rel="stylesheet" href="{% static "3rdparty/jquery.tablesorter-2.0.3/jquery.tablesorter.css" %}" type="text/css" media="screen"/>
+	<link rel="stylesheet" href="{% static '3rdparty/jquery.chosen-1.2.0/chosen.css' %}" type="text/css" media="screen"/>
 	<link rel="stylesheet" type="text/css" href="{% static 'graph/css/flot.css' %}"/>
 {% endblock %}    
 
-{% block script %}
+{% block body %}
 	{{ block.super }}
+	{% block content %}
+	    <div id="center_details">
+	        {% if ome.message %}<div class="error">{{ ome.message|safe|linebreaks }}</div>{% endif %}
+	        {% block center_details %}{% endblock %}
+	    </div>
+	{% endblock %}
+
 	<script src="{% static 'graph/js/jquery.flot.js' %}"></script>
 	<script src="{% static 'graph/js/jquery.flot.axislabels.js' %}"></script>
+	<script src="{% static 'graph/js/backbone-min.js' %}"></script>
+	<script src="{% static 'graph/js/underscore-min.js' %}"></script>
 	<script src="{% static 'graph/js/html2canvas.js' %}"></script>
-{% endblock %}
-
-{% block content %}
-    <div id="center_details">
-        {% if ome.message %}<div class="error">{{ ome.message|safe|linebreaks }}</div>{% endif %}
-        {% block center_details %}{% endblock %}
-    </div>
-{% endblock %}
-
+	<script type="text/javascript" src="{% static '3rdparty/jquery.chosen-1.2.0/chosen.jquery.js' %}"></script>
+{% endblock %}  

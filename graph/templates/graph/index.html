@@ -1,17 +1,8 @@
 {% extends "graph/base.html" %}
 {% load i18n %}
 
-{% block link %}
-    {{ block.super }}
-    <link rel="stylesheet" type="text/css" href="{% static "webgateway/css/ome.body.css" %}"/>
-    <link rel="stylesheet" href="{% static "webgateway/css/ome.table.css"|add:url_suffix %}" type="text/css" media="screen"/>
-    <link rel="stylesheet" href="{% static "3rdparty/jquery.tablesorter-2.0.3/jquery.tablesorter.css" %}" type="text/css" media="screen"/>
-	<link rel="stylesheet" href="{% static '3rdparty/jquery.chosen-1.2.0/chosen.css' %}" type="text/css" media="screen"/>
-{% endblock %}
-
 {% block script %}
 	{{ block.super }}
-	<script type="text/javascript" src="{% static '3rdparty/jquery.chosen-1.2.0/chosen.jquery.js' %}"></script>
 	<script type="text/javascript">
 	$(document).ready(function() {
 		$("#id_preview_annotation").chosen({disable_search_threshold: 10,placeholder_text:'Choose annotation to preview'});
