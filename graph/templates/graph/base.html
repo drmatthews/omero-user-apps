@@ -9,21 +9,11 @@
     <link rel="stylesheet" href="{% static "3rdparty/jquery.tablesorter-2.0.3/jquery.tablesorter.css" %}" type="text/css" media="screen"/>
 	<link rel="stylesheet" href="{% static '3rdparty/jquery.chosen-1.2.0/chosen.css' %}" type="text/css" media="screen"/>
 	<link rel="stylesheet" type="text/css" href="{% static 'graph/css/flot.css' %}"/>
-{% endblock %}    
-
-{% block body %}
-	{{ block.super }}
-	{% block content %}
-	    <div id="center_details">
-	        {% if ome.message %}<div class="error">{{ ome.message|safe|linebreaks }}</div>{% endif %}
-	        {% block center_details %}{% endblock %}
-	    </div>
-	{% endblock %}
-
-	<script src="{% static 'graph/js/jquery.flot.js' %}"></script>
-	<script src="{% static 'graph/js/jquery.flot.axislabels.js' %}"></script>
-	<script src="{% static 'graph/js/backbone.js' %}"></script>
-	<script src="{% static 'graph/js/underscore.js' %}"></script>
-	<script src="{% static 'graph/js/html2canvas.js' %}"></script>
-	<script type="text/javascript" src="{% static '3rdparty/jquery.chosen-1.2.0/chosen.jquery.js' %}"></script>
 {% endblock %}  
+
+{% block content %}
+    <div id="center_details">
+        {% if ome.message %}<div class="error">{{ ome.message|safe|linebreaks }}</div>{% endif %}
+        {% block center_details %}{% endblock %}
+    </div>
+{% endblock %}
