@@ -1,22 +1,25 @@
 $(function(){
-	var Annotation = Backbone.Model.extend();
-	
-	var Annotations = Backbone.Collection.extend({
-		url: '/',
-		model: Annotation
+	var Annotation = Backbone.Model.extend({
+		url: "/"
 	});
 	
 	var AnnotationView = Backbone.View.extend({
 		
-		el: $('#id_preview_annotation'),
-		
-		initialize: function(){
-			_.bindAll(this,'render')
-		},
-		
-		render: function(){
-	            $(this.el).attr('value', this.model.get('id')).html(this.model.get('name'));
-	            return this;
+	    events: {
+	        "submit form": "submit",
+	    },
+
+	    initialize: function () {
+	        console.log("initialize");
+	    },
+
+	    submit: function (e) {
+	        e.preventDefault();
+	        console.log("submit");
 	    }
 	});
+	
+	var currentAnn = new Annotation();
+
+	var currentAnnView = new AnnotationView()({ model: currentAnn });
 });

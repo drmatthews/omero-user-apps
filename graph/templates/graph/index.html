@@ -15,7 +15,7 @@
 			<p>There are {{ num_xls }} Excel files, {{ num_csv }} CSV files and {{ num_txt }} TXT files</p>
 			<p>Select an annotation from the list and state which row holds the column names.
 				Leave 'Header' blank if there are no column names.</p>
-
+			<span id="test"></span>
 			<form class="standard_form settings_form" action="{% url 'preview' %}" method="POST" id="preview_form">{% csrf_token %}
 				{{ prev_form.annotation.errors }}
 				{% for field in prev_form %}
@@ -43,13 +43,25 @@
 				{% endfor %}
 				<input value="Get Columns" type="submit" />
 			</form>
-			<div id="graph_setup">Pre-populated form will go here...</div>
+			<div id="graph_setup">
+					<div id="django_message"></div>
+					<form class="standard_form settings_form" action="" method="POST" id="plotform">{% csrf_token %}
+					    {{graph_form.as_p}}
+					    <input value="Plot" type="submit" />
+					</form>
+				</div>
 		{% else %}
 		    <p>No annotations.</p>
 		{% endif %}
 
 	</div>
-	<div id="graph_container">Loading...</div>
+	<div class="flot-container" id="flot_container">
+		<div id="flot_placeholder" class="flot-placeholder"></div>
+		<div id="flot_toolbar" class="flot-toolbar">
+			<p><label><input id="enableTooltip" type="checkbox" checked="checked"></input>Enable tooltip</label></p>
+			<button type="button" id="flot_save">Export to OMERO</button>
+		</div>
+	</div>
 {% endblock %}
 
 {% block body %}
@@ -70,7 +82,9 @@
 			$("#id_y").chosen({disable_search_threshold: 10,placeholder_text:'Choose columns to plot',width: "300px"});
 			$("#preview_sheet").hide();
 			$("#sheet").hide();
-			$("#setup_container").hide();
+			$("#graph_setup").hide();
+			$(".flot-container").hide();
+			$("#flot_toolbar").hide();
 			
 			if ($('#id_annotation').val().indexOf('xls')>0) {
 						$("#preview_sheet").show();
@@ -96,47 +110,178 @@
 			});
 		});
 	</script>
-
-   <script type="text/template" id="graphform-template">
-		<form class="standard_form settings_form" action="" method="POST" id="graphform">{% csrf_token %}
-			{{graph_form.as_p}}
-			<input value="Plot" type="submit" />
-		</form>
-    </script>
-			
-   <script type="text/template" id="graph-template">
-      <div id="graph_placeholder"></div>
-    </script>
-	
+		
 	<script type="text/javascript">
 		
-	    var app = {}; // create namespace for our app
-
-	    app.Graph = Backbone.Model.extend({
-	      defaults: {
-	        title: '',
-			xaxis_title: '',
-			yaxis_title: '',
-			url: '/graph/plot' 
-	      }
-	    });
-
-
-		var GraphView = Backbone.View.extend({
-		  el: $('#graph_container'),
-		  // template which has the placeholder 'who' to be substitute later
-		  template: _.template($('#graph-template').html()),
-		  initialize: function(){
-		    this.render();
-		  },
-		  render: function(){
-		    // render the function using substituting the varible 'who' for 'world!'.
-		    this.$el.html(this.template({who: 'here!'}));
-		    //***Try putting your name instead of world.
-		  }
+		var app = {};
+		
+		app.Annotation = Backbone.Model.extend({
+			url: "/graph/find"
 		});
 
-		var appView = new GraphView();
+		app.Graph = Backbone.Model.extend({
+			url: "/graph/plot"
+		});
+			
+		app.AnnotationView = Backbone.View.extend({
+			
+			el: '#annotation_form',
+			
+		    events: {
+		        "submit": "submit",
+		    },
 
+		    initialize: function () {
+		        console.log("initialize");
+				console.log(this.model);
+		    },
+
+		    submit: function (e) {
+		        e.preventDefault();
+		        console.log("submit");
+				console.log(this.model);
+				var header = $('#id_header').val();
+				var sheet = $('#id_sheet').val();
+				var annotation = $('#id_annotation').val();
+				var model = this.model;
+				$.ajax({
+					traditional: true,
+					type: "POST",
+					url: this.$el.attr('action'),
+					data : {'annotation' : annotation, 'header': header, 'sheet': sheet},
+					success: function(results) {
+						console.log(results)
+						var xoptions = $("#id_x");
+						var yoptions = $("#id_y");
+						var columns = results.columns;
+						$("#id_x").empty();
+						$("#id_y").empty();
+						for (i = 0; i < columns.length; i++) {
+							xoptions.append($("<option />").val(columns[i][0]).text(columns[i][1]));
+							yoptions.append($("<option />").val(columns[i][0]).text(columns[i][1]));
+						}
+						$("#id_x").trigger("chosen:updated");
+						$('#id_x').val('').trigger('liszt:updated');
+						$("#id_y").trigger("chosen:updated");
+						$('#id_y').val('').trigger('liszt:updated');
+						$("#graph_setup").show();
+						model.save({'title': results.selected, 'xoptions': columns})
+						console.log(model);
+				  },
+		          statusCode: {
+		              400: function() {
+		                  alert("Too many rows in annotation");
+					  }
+		          }
+				});
+		    }
+		});
+
+		app.GraphView = Backbone.View.extend({
+			
+			el: '#plotform',
+			
+		    events: {
+		        "submit": "submit",
+		    },
+
+		    initialize: function () {
+		        console.log("initialize");
+				console.log(this.model);
+		    },
+
+		    submit: function (e) {
+				e.preventDefault();
+				console.log(this.model)
+				var model = this.model;
+				var x = $('#id_x').val();
+				var y = $('#id_y').val();
+				var annId = "{{ request.session.annotation_id }}";
+				console.log("the form has beeen submitted");
+				console.log("x:",x,"y:",y)
+				$.ajax({
+					traditional: true,
+					type: "POST",
+					url: "/graph/plot/",
+					data : {'x' : x, 'y': y},
+					success: function(plotresults) {
+						console.log(plotresults)
+						console.log(plotresults.message)
+
+						function generateData(fseriesdata) {
+						    series = [];
+						    for (fi = 0; fi < fseriesdata.length; fi++) {
+						        var fd = fseriesdata[fi];
+					            series.push({
+									label: 'Series'+String(fi),
+					                data: fd
+					            });
+						    }
+						    return series;
+						};
+						var data = generateData(plotresults.flot_data);
+						$('#id_annotation').val('').trigger('liszt:updated');
+						
+						var useCanvas = false;
+						var axisLabelPadding = 5;
+						var options = {
+							axisLabels: {
+							            show: true
+							        },
+							xaxes: [{
+					            axisLabel: x,
+								axisLabelUseCanvas: useCanvas,
+								axisLabelPadding: axisLabelPadding
+							        }],
+					        yaxes: [{
+					            position: 'left',
+					            axisLabel: y,
+								axisLabelUseCanvas: useCanvas,
+								axisLabelPadding: axisLabelPadding
+					        }],
+							series: {
+								lines: {
+									show: true
+								},
+								points: {
+									show: true
+								}
+							},
+							grid: {
+								hoverable: true,
+								clickable: true
+							},
+							xaxis: {
+								tickDecimals: 0,
+								tickSize: plotresults.xmax / 10
+					        }
+						};
+	
+						$(".flot-container").show();
+						$("#flot_toolbar").show();
+						var plot = $.plot("#flot_placeholder", data, options);
+						var canvas = plot.getCanvas();
+						var c = canvas.getContext("2d");
+						var cx = canvas.width / 2;
+						var cy = canvas.height;
+						var title = plotresults.title;
+						var xlabel = x;
+						c.font = "bold 16px sans-serif";
+						c.textAlign = 'center';
+					    c.fillText(title,cx,30);
+						this.model.save({'title': title, 'xlabel': x, 'ylabel': y})
+				  },
+				  error: function(error) {
+				    console.log(error)
+				  }
+				});
+		    }
+		});
+						
+		app.Ann = new app.Annotation();
+
+		app.AnnView = new app.AnnotationView({ model: app.Ann });
+		app.GraphView = new app.GraphView({ model: app.Ann });
 	</script>
+			
 {% endblock %}
