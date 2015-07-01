@@ -284,12 +284,12 @@ def plot(request, conn=None, **kwargs):
             xmin = min(xdata)
             xmax = max(xdata)
             ydata = get_column(fpath,fextension,y,header_row,sheet)
-            flot = flot_data(xdata,ydata)
+            graph = flot_data(xdata,ydata)
             rv = {'message': message,\
                   'title': title, 'x' : x, 'y' : y,\
                   'xdata': xdata, 'ydata': ydata,\
                   'num_series': len(ydata),
-                  'xmin': xmin, 'xmax': xmax,'flot_data': flot}
+                  'xmin': xmin, 'xmax': xmax,'graph_data': graph}
             data = json.dumps(rv)
             return HttpResponse(data, mimetype='application/json')
             
