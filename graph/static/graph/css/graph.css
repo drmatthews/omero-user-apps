@@ -31,6 +31,17 @@
 	height: 100px;
 }
 
+#tooltip {
+	position: "absolute",
+	display: "none",
+	border: "1px solid #fdd",
+	padding: "2px",
+	"background-color": "#fee",
+	opacity: 0.80,
+	font: "18px/1.5em proxima-nova, Helvetica, Arial, sans-serif",
+	color: "#000000"
+}
+
 .legend table {
 	border-spacing: 5px;
 }
