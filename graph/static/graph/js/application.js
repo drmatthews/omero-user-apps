@@ -307,16 +307,18 @@ $(function(){
 	app.colorPickView = Backbone.View.extend({
 		el: '#color_picker',
 		initialize: function() {
+			this.$el.css({color: 'rgb(237,194,64)'});
 			var model = this.model;
 			this.$el.colorPicker();
 		},
 		events: {
-			"click #color_picker": "colorPicker"
+			"click #colorPicker_palette-0": "colorPicker"
 		},
 		
 		colorPicker: function(e) {
 			var model = this.model;
-			this.$el.spectrum({
+			console.log("click")
+			/*this.$el.spectrum({
 				change: function(color) {
 					console.log(color.toHexString())
 					var seriesColor = color.toHexString();
@@ -326,7 +328,7 @@ $(function(){
 					model.set({'colors': colors });
 					model.plotGraph();
 				}
-			});
+			});*/
 		}
 	});
 		
