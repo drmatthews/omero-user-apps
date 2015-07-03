@@ -278,8 +278,16 @@ def plot(request, conn=None, **kwargs):
         form = GraphForm(options=cols,data=request.POST.copy())
         if form.is_valid():
             title = annotation.getFile().getName()
+            if form.cleaned_data['title']:
+                title = form.cleaned_data['title']
             x = form.cleaned_data['x']
             y = form.cleaned_data['y']
+            xLabel = x
+            if form.cleaned_data['xLabel']:
+                xLabel = form.cleaned_data['xLabel']
+            yLabel = y
+            if form.cleaned_data['yLabel']:
+                yLabel = form.cleaned_data['yLabel']
             xdata = [floor(xd) for xd in get_column(fpath,fextension,x,header_row,sheet)]
             xmin = min(xdata)
             xmax = max(xdata)
@@ -287,6 +295,7 @@ def plot(request, conn=None, **kwargs):
             graph = flot_data(xdata,ydata)
             rv = {'message': message,\
                   'title': title, 'x' : x, 'y' : y,\
+                  'xLabel': xLabel, 'yLabel': yLabel,\
                   'xdata': xdata, 'ydata': ydata,\
                   'num_series': len(ydata),
                   'xmin': xmin, 'xmax': xmax,'graph_data': graph}

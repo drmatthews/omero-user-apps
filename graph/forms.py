@@ -1,5 +1,5 @@
 from django import forms
-from django.forms import ChoiceField,MultipleChoiceField,IntegerField
+from django.forms import ChoiceField,MultipleChoiceField,IntegerField,CharField
 
 class PreviewForm(forms.Form):
     def __init__(self, options=None, *args, **kwargs):
@@ -26,3 +26,6 @@ class GraphForm(forms.Form):
 
     x = ChoiceField(choices=(),required=True)
     y = MultipleChoiceField(choices=(),required=True)
+    title = CharField(max_length=200,required=False)
+    xLabel = CharField(max_length=50,required=False)
+    yLabel = CharField(max_length=50,required=False)

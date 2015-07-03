@@ -1,4 +1,3 @@
-
 .graph-container {
 	box-sizing: border-box;
 	width: 100%;
@@ -31,17 +30,18 @@
 	height: 100px;
 }
 
-#tooltip {
-	position: "absolute",
-	display: "none",
-	border: "1px solid #fdd",
-	padding: "2px",
-	"background-color": "#fee",
-	opacity: 0.80,
-	font: "18px/1.5em proxima-nova, Helvetica, Arial, sans-serif",
-	color: "#000000"
-}
-
 .legend table {
 	border-spacing: 5px;
 }
+
+.graph-dialog label, input { display:block; }
+.graph-dialog input.select { margin-bottom:12px; width:95%; padding: 10px; }
+input.text { margin-bottom:12px; width:95%; padding: 10px; }
+#id_title { width: 290px;}
+#id_xLabel { width: 138px;}
+#id_yLabel { width: 138px;}
+#graph_title { width: 290px;}
+#graph_xLabel { width: 138px;}
+#graph_yLabel { width: 138px;}
+
+.tooltip-container label, input { display:inline;}

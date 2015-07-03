@@ -2,7 +2,7 @@
 {% load i18n %}
 
 {% block title %}
-    Graphs
+    Graph
 {% endblock %}
 
 {% block center_details %}
@@ -43,13 +43,12 @@
 				{% endfor %}
 				<input value="Get Columns" type="submit" />
 			</form>
-			<div id="graph_setup">
-					<div id="django_message"></div>
-					<form class="standard_form settings_form" action="" method="POST" id="plotform">{% csrf_token %}
-					    {{graph_form.as_p}}
-					    <input value="Plot" type="submit" />
-					</form>
-				</div>
+			<div id="graph_setup_dialog" class="graph-dialog" title="Graph settings">
+				<div id="django_message"></div>
+				<form action="" method="POST" id="plotform">{% csrf_token %}
+					{{ graph_form.as_p}}
+				</form>
+			</div>
 		{% else %}
 		    <p>No annotations.</p>
 		{% endif %}
@@ -58,11 +57,26 @@
 	<div class="graph-container" id="graph_container">
 		<div id="graph_placeholder" class="graph-placeholder"></div>
 		<div id="graph_toolbar" class="graph-toolbar">
-			<p><label><input id="enableTooltip" type="checkbox" checked="checked"></input>Enable tooltip</label></p>
-			<p><select id='series_select'></select><input type='text' id="color_picker"/></p>
-			<button type="button" id="graph_save">Export to OMERO</button>
+			<div class="tooltip-container">
+				<p><label><input id="enableTooltip" type="checkbox" checked="checked"></input>Enable tooltip</label></p>
+			</div>
+            <a class="btn btn_text silver" id="graph_save">
+                <span>Export to OMERO</span>
+            </a>
+            <a class="btn btn_text silver" id="graph_edit">
+                <span>Edit</span>
+            </a>
 		</div>
 	</div>
+	<div id="graph_edit_dialog" class="graph-dialog" title="Graph settings">
+		<p><label for="graph_title">Title</label>
+		   <input type='text' id="graph_title" /></p>
+		<p><label for="graph_xLabel">X Label</label>
+		   <input type='text' id="graph_xLabel"/></p>
+		<p><label for="graph_yLabel">Y Label</label>
+		   <input type='text' id="graph_yLabel"/></p>
+	</div>
+	
 {% endblock %}
 
 {% block body %}
@@ -72,10 +86,11 @@
 	<script src="{% static 'graph/js/jquery.flot.axislabels.js' %}"></script>
 	<script src="{% static 'graph/js/underscore.js' %}"></script>
 	<script src="{% static 'graph/js/backbone.js' %}"></script>
-	<script src="{% static 'graph/js/application.js' %}"></script>
 	<script src="{% static 'graph/js/html2canvas.js' %}"></script>
-	<script src="{% static 'graph/js/jquery.colorPicker.js' %}"></script>
 	<script type="text/javascript" src="{% static '3rdparty/jquery.chosen-1.2.0/chosen.jquery.js' %}"></script>
+	<script src="{% static 'graph/js/models.js' %}"></script>
+	<script src="{% static 'graph/js/views.js' %}"></script>
+	<script src="{% static 'graph/js/application.js' %}"></script>
 	
 	<script type="text/javascript">
 		$(document).ready(function() {
